@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Excel Analytics Tool - Multi-Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary: #6366f1;
+            --accent: #f43f5e;
+            --bg: #f8fafc;
+        }
+        
+        body {
+            font-family: 'Inter', 'Sarabun', sans-serif;
+            background-color: var(--bg);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
+
+        .drop-area {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+        }
+        .drop-area:hover, .drop-area.active {
+            border-color: var(--primary);
+            background-color: #f5f3ff;
+            transform: scale(1.01);
+        }
+
+        .table-container {
+            border-radius: 12px;
+            overflow: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: white;
+            position: relative;
+        }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 10px 14px;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 40;
+            background-color: #f8fafc !important;
+            border-right: 2px solid #e2e8f0 !important;
+            min-width: 220px;
+            max-width: 220px;
+        }
+        
+        th.sticky-col {
+            z-index: 50;
+            background-color: #f1f5f9 !important;
+        }
+
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            font-size: 0.875rem;
+            background-color: white;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        #toast {
+            visibility: hidden;
+            min-width: 280px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 12px;
+            padding: 12px 24px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 40px;
+            transform: translateX(-50%);
+        }
+        #toast.show { visibility: visible; animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s; }
+
+        .search-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            background: #e0e7ff;
+            color: #4338ca;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .row-label-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+        }
+        .row-highlight-1 { color: #4f46e5; }
+        .row-highlight-2 { color: #0891b2; }
+        .row-highlight-3 { color: #059669; }
+        .row-highlight-4 { color: #d97706; }
+        .row-highlight-5 { color: #dc2626; }
+
+        .copy-btn-small {
+            padding: 4px 8px;
+            font-size: 10px;
+            background: #f1f5f9;
+            color: #64748b;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .copy-btn-small:hover { background: #e2e8f0; color: #1e293b; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800">
+
+    <div id="toast">คัดลอกข้อมูลสำเร็จแล้ว</div>
+
+    <!-- View 1: Upload -->
+    <div id="uploadView" class="flex flex-col items-center justify-center min-h-screen p-6 animate-slide-in">
+        <div class="max-w-2xl w-full text-center">
+            <h1 class="text-4xl font-extrabold text-slate-900 mb-2">Excel Smart Analysis</h1>
+            <p class="text-slate-500 mb-10">แสดงผลเฉพาะวันที่ที่มีข้อมูลในไฟล์ (Exact Match)</p>
+            
+            <div id="dropZone" class="drop-area rounded-3xl p-12 shadow-sm cursor-pointer border-slate-200">
+                <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">ลากไฟล์ Excel มาวางที่นี่</h3>
+                <button class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl mt-4">เลือกไฟล์</button>
+                <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
+            </div>
+        </div>
+    </div>
+
+    <!-- View 2: Data Dashboard -->
+    <div id="dataView" class="hidden flex flex-col min-h-screen">
+        <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-6">
+                <div class="flex items-center gap-4 shrink-0">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">EX</div>
+                    <div class="hidden sm:block">
+                        <h2 id="fileNameLabel" class="font-bold text-slate-800 truncate max-w-[150px]">ไฟล์: -</h2>
+                        <span id="rowCountLabel" class="text-xs text-slate-500 font-medium tracking-tight">พบ 0 รายการ</span>
+                    </div>
+                </div>
+
+                <div class="shrink-0 flex items-center gap-2">
+                    <select id="shiftSelector" class="px-3 py-2.5 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold">
+                        <option value="night" selected>🌙 กะกลางคืน</option>
+                        <option value="day">☀️ กะกลางวัน</option>
+                    </select>
+                    
+                    <select id="teamSelector" class="px-3 py-2.5 bg-indigo-50 text-indigo-700 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold cursor-pointer hover:bg-indigo-100 transition-colors">
+                        <option value="">👥 เลือกทีม (ทั้งหมด)</option>
+                        <option value="1">ทีม 1</option>
+                        <option value="2">ทีม 2</option>
+                        <option value="3">ทีม 3</option>
+                        <option value="4">ทีม 4</option>
+                        <option value="5">ทีม 5</option>
+                    </select>
+                </div>
+
+                <div class="relative flex-grow w-full max-w-2xl">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อให้ตรงตัว (แยกด้วยคอมม่า เช่น สมชาย, สมหญิง)..." class="block w-full pl-11 pr-24 py-3 bg-slate-100 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+                    
+                    <div class="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+                        <button id="clearSearchBtn" title="ล้างการค้นหา" class="hidden p-1.5 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="resetApp()" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">เปลี่ยนไฟล์</button>
+            </div>
+            <div id="searchTags" class="max-w-7xl mx-auto mt-2 flex flex-wrap gap-2 px-6"></div>
+        </header>
+
+        <main class="max-w-7xl mx-auto w-full p-6 space-y-10 animate-slide-in">
+            <!-- ส่วนที่ 4 -->
+            <section id="grandSummarySection">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-2 h-6 bg-indigo-600 rounded-full"></div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">ส่วนที่ 4: สรุปยอดกะกลางคืน (เฉพาะวันที่ในไฟล์)</h3>
+                    </div>
+                </div>
+                <div id="grandSummaryTableArea" class="table-container overflow-x-auto custom-scrollbar border-indigo-100 border-2"></div>
+            </section>
+
+            <!-- ส่วนที่ 5 -->
+            <section id="dayShiftSummarySection" class="hidden">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-2 h-6 bg-amber-500 rounded-full"></div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">ส่วนที่ 5: สรุปยอดกะกลางวัน (เฉพาะวันที่ในไฟล์)</h3>
+                    </div>
+                </div>
+                <div id="daySummaryTableArea" class="table-container overflow-x-auto custom-scrollbar border-amber-100 border-2"></div>
+            </section>
+
+            <!-- ข้อมูลหลัก -->
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-2 h-6 bg-slate-400 rounded-full"></div>
+                    <h3 class="text-xl font-bold text-slate-900">ตารางข้อมูลดิบ</h3>
+                </div>
+                <div class="table-container max-h-[500px] overflow-auto custom-scrollbar border border-slate-200">
+                    <div id="mainTableArea"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let originalData = [];
+        let tableHeaders = [];
+        let visibleColumns = [];
+        let currentFilteredData = [];
+        let sortConfig = { key: null, direction: 'asc' };
+        let dateColumnIndex = -1;
+        let lastSearchQueries = [];
+        let availableDatesInFile = [];
+        
+        let lastGrandMatrix = []; 
+        let lastDayMatrix = [];
+
+        function initApp() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const searchInput = document.getElementById('searchInput');
+            const shiftSelector = document.getElementById('shiftSelector');
+            const teamSelector = document.getElementById('teamSelector');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+            dropZone.onclick = () => fileInput.click();
+            fileInput.onchange = (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); };
+
+            searchInput.oninput = () => {
+                if (teamSelector.value !== "") teamSelector.value = "";
+                const queries = searchInput.value.split(/[,,| ]/).map(s => s.trim()).filter(s => s !== "").slice(0, 5);
+                performSearch(queries);
+            };
+
+            teamSelector.onchange = () => {
+                const team = teamSelector.value;
+                let names = "";
+                switch(team) {
+                    case "1": names = "ดีดี๊,หมวย,ปาล์ม,เป๊ปซี่"; break;
+                    case "2": names = "เบ๊บ,เฟิร์ส,มันแกว,เดีย,ฟีม"; break;
+                    case "3": names = "ปอลี่,ฟ้า,เป้,พี่มิ,เป๋าเป้"; break;
+                    case "4": names = "ป็อบ,ไอซ์,นิว,ปุ้ก"; break;
+                    case "5": names = "นนท์,เบียร์,แนน,ซัน"; break;
+                    default: names = "";
+                }
+                searchInput.value = names;
+                const queries = names.split(',').map(s => s.trim()).filter(s => s !== "");
+                performSearch(queries);
+            };
+
+            function performSearch(queries) {
+                lastSearchQueries = queries;
+                if (searchInput.value.length > 0) clearSearchBtn.classList.remove('hidden');
+                else clearSearchBtn.classList.add('hidden');
+                document.getElementById('searchTags').innerHTML = queries.map(q => `<span class="search-badge">${q}</span>`).join('');
+                filterData(queries);
+            }
+
+            clearSearchBtn.onclick = () => {
+                searchInput.value = "";
+                teamSelector.value = "";
+                lastSearchQueries = [];
+                clearSearchBtn.classList.add('hidden');
+                document.getElementById('searchTags').innerHTML = "";
+                filterData([]);
+                searchInput.focus();
+            };
+
+            shiftSelector.onchange = () => {
+                const isDay = shiftSelector.value === 'day';
+                document.getElementById('dayShiftSummarySection').classList.toggle('hidden', !isDay);
+                document.getElementById('grandSummarySection').classList.toggle('hidden', isDay);
+            };
+        }
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
+
+                if (json.length > 0) {
+                    tableHeaders = json[0];
+                    let rawData = json.slice(1);
+                    
+                    const nameMap = {
+                        "MLPR_Surachet.th": "เป้", "MLPR_Phogsakorn.wad": "ปอลี่", "MLPR_Siriwan.put": "เบียร์",
+                        "TG_Anon.cha": "นนท์", "MLPR_Atcharaporn.ch": "พี่แนน", "MLPR_Chanokwan.kan": "เดีย",
+                        "TG_Pakin.pl": "ซัน", "TG_Sitthinon.kae": "นิว", "TG_Wannarat.dou": "หมวย",
+                        "MLPR_Phanupong.ko": "เป๊ปซี่", "MLPR_Thanawat.utt": "ปาล์ม", "MLPR_Harumi.ut": "พี่มิ",
+                        "MLPR_Kanthika.nap": "ฟีม", "MLPR_Oracha.wi": "มันแกว", "MLPR_Pakkawat.boo": "ไอซ์",
+                        "MLPR_Patiwet.nua": "เบ๊บ", "MLPR_Phetnarin.yae": "เป๋าเป้", "MLPR_Piyavan.see": "ปุ้ก",
+                        "TG_Aekkarat.ama": "เฟิร์ส", "TG_Auttapinuya.sin": "ฟ้า", "TG_Maneerat.sae": "ป็อป",
+                        "MLPR_Wisarut.moo": "ดีดี๊"
+                    };
+
+                    originalData = rawData.map(row => {
+                        return row.map(cell => {
+                            if (typeof cell === 'string') {
+                                let updatedCell = cell;
+                                for (const [key, nickname] of Object.entries(nameMap)) {
+                                    const escapedKey = key.replace(/\./g, '\\.');
+                                    const regex = new RegExp(escapedKey, 'gi');
+                                    if (regex.test(updatedCell)) updatedCell = updatedCell.replace(regex, nickname);
+                                }
+                                return updatedCell;
+                            }
+                            return cell;
+                        });
+                    });
+
+                    dateColumnIndex = tableHeaders.findIndex(h => String(h).includes('วัน'));
+                    if (dateColumnIndex === -1) dateColumnIndex = 0;
+
+                    // ดึงเฉพาะวันที่ที่มีอยู่ในไฟล์จริงๆ
+                    availableDatesInFile = [...new Set(originalData.map(row => row[dateColumnIndex] || 'N/A'))]
+                        .filter(d => d !== 'N/A' && d !== '')
+                        .sort((a, b) => String(a).localeCompare(String(b)));
+
+                    visibleColumns = [];
+                    tableHeaders.forEach((_, i) => {
+                        if (originalData.some(row => row[i] !== undefined && row[i] !== null && String(row[i]).trim() !== "")) {
+                            visibleColumns.push(i);
+                        }
+                    });
+
+                    currentFilteredData = [...originalData];
+                    document.getElementById('fileNameLabel').textContent = "ไฟล์: " + file.name;
+                    renderAll();
+                    document.getElementById('uploadView').classList.add('hidden');
+                    document.getElementById('dataView').classList.remove('hidden');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function filterData(queries) {
+            if (queries.length === 0) currentFilteredData = [...originalData];
+            else {
+                currentFilteredData = originalData.filter(row => {
+                    return queries.some(q => {
+                        const searchLower = q.toLowerCase();
+                        return row.some(cell => String(cell).toLowerCase().trim() === searchLower);
+                    });
+                });
+            }
+            renderAll();
+        }
+
+        function getNumericValue(val) {
+            if (val === undefined || val === null) return 0;
+            const cleanVal = String(val).replace(/,/g, '');
+            const num = parseFloat(cleanVal);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function renderAll() {
+            const queries = lastSearchQueries.length > 0 ? lastSearchQueries : ["ทั้งหมด"];
+            const multiStats = {}; 
+
+            queries.forEach(q => {
+                multiStats[q] = {};
+                const dataForQ = q === "ทั้งหมด" 
+                    ? originalData 
+                    : originalData.filter(row => row.some(cell => String(cell).toLowerCase().trim() === q.toLowerCase()));
+                
+                dataForQ.forEach(row => {
+                    const d = row[dateColumnIndex] || 'N/A';
+                    if (!multiStats[q][d]) multiStats[q][d] = { g1: 0, g2: 0, sum: 0 };
+                    for (let i = 2; i <= 8; i++) multiStats[q][d].g1 += getNumericValue(row[i]);
+                    for (let i = 22; i <= 25; i++) multiStats[q][d].g2 += getNumericValue(row[i]);
+                    for (let i = 2; i <= 25; i++) multiStats[q][d].sum += getNumericValue(row[i]);
+                });
+            });
+
+            // ส่วนที่ 4
+            lastGrandMatrix = [];
+            let gHtml = '<table><thead><tr><th class="sticky-col">ชื่อ / วันที่</th>';
+            availableDatesInFile.forEach(d => gHtml += `<th class="text-center">${d}</th>`);
+            gHtml += '</tr></thead><tbody>';
+
+            for(let i = 0; i < 5; i++) {
+                const query = queries[i];
+                const rowLabel = query ? `คนที่ ${i+1}: ${query}` : `คนที่ ${i+1}: -`;
+                const rowClass = query ? `row-highlight-${i+1}` : '';
+                const rowData = [];
+                
+                availableDatesInFile.forEach((d, dIdx) => {
+                    let total = 0;
+                    if (query) {
+                        const g2Today = multiStats[query][d]?.g2 || 0;
+                        const nextD = availableDatesInFile[dIdx+1];
+                        const g1Next = nextD ? (multiStats[query][nextD]?.g1 || 0) : 0;
+                        total = Math.round(g2Today + g1Next);
+                    }
+                    rowData.push(total);
+                });
+                lastGrandMatrix.push(rowData);
+                gHtml += `<tr><td class="sticky-col ${rowClass}"><div class="row-label-content"><span>${rowLabel}</span> <button onclick="copyRow('night', ${i})" class="copy-btn-small">คัดลอก</button></div></td>`;
+                rowData.forEach(val => gHtml += `<td class="text-center font-bold ${val > 0 ? 'text-indigo-600' : 'text-slate-300'}">${val.toLocaleString()}</td>`);
+                gHtml += '</tr>';
+            }
+            gHtml += '</tbody></table>';
+            document.getElementById('grandSummaryTableArea').innerHTML = gHtml;
+
+            // ส่วนที่ 5
+            lastDayMatrix = [];
+            let dHtml = '<table><thead><tr><th class="sticky-col">ชื่อ / วันที่</th>';
+            availableDatesInFile.forEach(d => dHtml += `<th class="text-center">${d}</th>`);
+            dHtml += '</tr></thead><tbody>';
+
+            for(let i = 0; i < 5; i++) {
+                const query = queries[i];
+                const rowLabel = query ? `คนที่ ${i+1}: ${query}` : `คนที่ ${i+1}: -`;
+                const rowClass = query ? `row-highlight-${i+1}` : '';
+                const rowData = [];
+                availableDatesInFile.forEach(d => {
+                    let val = 0;
+                    if (query) val = Math.round(multiStats[query][d]?.sum || 0);
+                    rowData.push(val);
+                });
+                lastDayMatrix.push(rowData);
+                dHtml += `<tr><td class="sticky-col ${rowClass}"><div class="row-label-content"><span>${rowLabel}</span> <button onclick="copyRow('day', ${i})" class="copy-btn-small">คัดลอก</button></div></td>`;
+                rowData.forEach(val => dHtml += `<td class="text-center font-bold ${val > 0 ? 'text-amber-600' : 'text-slate-300'}">${val.toLocaleString()}</td>`);
+                dHtml += '</tr>';
+            }
+            dHtml += '</tbody></table>';
+            document.getElementById('daySummaryTableArea').innerHTML = dHtml;
+
+            renderMainTable();
+        }
+
+        window.copyRow = function(type, rowIndex) {
+            const matrix = (type === 'night') ? lastGrandMatrix : lastDayMatrix;
+            const rowData = matrix[rowIndex];
+            if (!rowData) return;
+            const text = rowData.join('\t');
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            const toast = document.getElementById("toast");
+            toast.textContent = `คัดลอกข้อมูลคนที่ ${rowIndex + 1} เรียบร้อยแล้ว`;
+            toast.className = "show";
+            setTimeout(() => { toast.className = ""; }, 3000);
+        };
+
+        function renderMainTable() {
+            let html = '<table><thead><tr><th class="w-12 text-center">#</th>';
+            visibleColumns.forEach(i => {
+                const icon = sortConfig.key === i ? (sortConfig.direction === 'asc' ? ' ↓' : ' ↑') : ' ↕';
+                html += `<th onclick="handleSort(${i})" class="cursor-pointer whitespace-nowrap">${tableHeaders[i]}${icon}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            currentFilteredData.forEach((row, idx) => {
+                html += `<tr><td class="text-center text-slate-400">${idx + 1}</td>`;
+                visibleColumns.forEach(i => html += `<td>${row[i] || ''}</td>`);
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('mainTableArea').innerHTML = html;
+            document.getElementById('rowCountLabel').textContent = `พบ ${currentFilteredData.length} รายการ`;
+        }
+
+        window.handleSort = function(columnIndex) {
+            let direction = (sortConfig.key === columnIndex && sortConfig.direction === 'asc') ? 'desc' : 'asc';
+            sortConfig = { key: columnIndex, direction };
+            currentFilteredData.sort((a, b) => {
+                let vA = a[columnIndex], vB = b[columnIndex];
+                const nA = parseFloat(String(vA).replace(/,/g, '')), nB = parseFloat(String(vB).replace(/,/g, ''));
+                if (!isNaN(nA) && !isNaN(nB)) return direction === 'asc' ? nA - nB : nB - nA;
+                return direction === 'asc' ? String(vA).localeCompare(String(vB)) : String(vB).localeCompare(String(vA));
+            });
+            renderAll();
+        };
+
+        window.resetApp = () => location.reload();
+        window.onload = initApp;
+    </script>
+</body>
+</html>
