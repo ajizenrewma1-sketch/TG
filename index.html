@@ -3,909 +3,529 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MLPR Task Tracker - Cloud Version</title>
+    <title>Premium Excel Analytics Tool - Multi-Search</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Sarabun', sans-serif; 
-            /* พื้นหลังแบบ Mesh Gradient เพิ่มมิติและสีสันที่ละมุนตา */
-            background-color: #f8fafc;
-            background-image: 
-                radial-gradient(at 10% 20%, hsla(28,100%,74%,0.15) 0px, transparent 50%),
-                radial-gradient(at 80% 10%, hsla(189,100%,56%,0.15) 0px, transparent 50%),
-                radial-gradient(at 10% 80%, hsla(242,100%,70%,0.15) 0px, transparent 50%),
-                radial-gradient(at 90% 90%, hsla(340,100%,76%,0.15) 0px, transparent 50%);
-            background-attachment: fixed;
-            color: #1e293b; 
-        }
-
-        /* --- UI Effects & Buttons --- */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.06);
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --secondary: #6366f1;
+            --accent: #f43f5e;
+            --bg: #f8fafc;
         }
         
-        .btn-pop {
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-        .btn-pop:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.2);
-        }
-        .btn-pop:active {
-            transform: translateY(1px);
-            box-shadow: 0 2px 5px -2px rgba(0, 0, 0, 0.2);
+        body {
+            font-family: 'Inter', 'Sarabun', sans-serif;
+            background-color: var(--bg);
         }
 
-        /* --- Section 1: Daily Entry --- */
-        .input-card { overflow: hidden; }
-        .input-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-        .input-table th, .input-table td { 
-            border: 1px solid rgba(203, 213, 225, 0.6); 
-            padding: 4px 2px; text-align: center; font-size: 12px; transition: background 0.2s;
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideIn 0.4s ease-out forwards; }
+
+        .drop-area {
+            border: 2px dashed #e2e8f0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+        }
+        .drop-area:hover, .drop-area.active {
+            border-color: var(--primary);
+            background-color: #f5f3ff;
+            transform: scale(1.01);
+        }
+
+        .table-container {
+            border-radius: 12px;
+            overflow: auto;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background: white;
+            position: relative;
+        }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; }
+        
+        th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            padding: 10px 14px;
+            border-bottom: 2px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 40;
+            background-color: #f8fafc !important;
+            border-right: 2px solid #e2e8f0 !important;
+            min-width: 220px;
+            max-width: 220px;
         }
         
-        .col-name { width: 80px; }
-        .col-task { width: 45px; } 
-
-        .input-header-row1 th { 
-            background: linear-gradient(135deg, #f97316, #ea580c); 
-            color: white; font-weight: 700; padding-top: 6px; padding-bottom: 6px; 
-            border-color: #c2410c; text-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .input-header-row1 .cell-a { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #78350f; border-color: #d97706; }
-        .input-header-row2 th { background-color: #eff6ff; font-weight: 700; height: 32px; color: #1e3a8a; }
-        .input-field { width: 100%; text-align: center; font-weight: 700; font-size: 1rem; border: none; background: transparent; outline: none; transition: all 0.2s;}
-        .input-field:focus { transform: scale(1.15); color: #4f46e5; }
-
-        /* Product Colors */
-        .col-ml { color: #15803d; } .col-mn { color: #b91c1c; } .col-rcf { color: #c2410c; }      
-        .col-txn { color: #1d4ed8; } .col-inq { color: #7e22ce; } .col-log { color: #b45309; }      
-        .col-conv { color: #b91c1c; } .col-qc { color: #be123c; }       
-
-        /* Softened Row Colors */
-        .row-por { background-color: rgba(254, 252, 232, 0.7); } .row-mi { background-color: rgba(253, 242, 248, 0.7); }  
-        .row-peape { background-color: rgba(240, 253, 244, 0.7); } .row-pime { background-color: rgba(239, 246, 255, 0.7); } 
-        .input-table tbody tr:hover td { background-color: rgba(255,255,255,0.9); }
-
-        /* --- Section 2: Summary Table --- */
-        .summary-card { padding: 1.5rem; border-radius: 24px; }
-        .table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5); }
-        .monthly-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: 13px; }
-        .monthly-table th { background: #1e293b; color: white; padding: 12px 8px; font-weight: 600; border-right: 1px solid #334155; border-bottom: 1px solid #334155; }
-        .monthly-table td { border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 8px; text-align: center; transition: background 0.2s;}
-
-        .sticky-col-1 { position: sticky; left: 0; z-index: 10; width: 180px; min-width: 180px; text-align: left !important; border-right: 2px solid #cbd5e1 !important; }
-        .sticky-col-2 { position: sticky; left: 180px; z-index: 10; width: 120px; min-width: 120px; text-align: left !important; background: white; }
-        .sticky-col-3 { position: sticky; left: 300px; z-index: 10; width: 90px; min-width: 90px; border-right: 3px solid #94a3b8 !important; }
-        
-        td.sticky-col-3 { background-color: #fffbeb !important; font-weight: 800; color: #92400e; }
-
-        .staff-divider td { border-bottom: 4px solid #cbd5e1 !important; }
-        .monthly-table tbody tr:hover td { background-color: #f8fafc !important; }
-
-        /* Holiday Cell Styles */
-        .weekend-col { background-color: #f8fafc; color: #94a3b8; }
-        .holiday-weekly { background-color: #f1f5f9 !important; color: #64748b !important; }
-        .holiday-leave { background-color: #f0fdf4 !important; color: #166534 !important; }
-        .holiday-swap { background-color: #f5f3ff !important; color: #5b21b6 !important; }
-        
-        .vertical-text { writing-mode: vertical-rl; text-orientation: mixed; transform: rotate(180deg); white-space: nowrap; font-weight: 700; font-size: 11px; padding: 10px 2px; display: inline-block; }
-        .day-cell { min-width: 45px; } .qc-text { color: #e11d48; font-weight: bold; }
-
-        /* Schedule Table */
-        .schedule-cell { min-width: 35px; border-right: 1px solid #e2e8f0; padding: 4px 0; }
-        .schedule-today { background-color: #ffedd5; border: 1px solid #fb923c !important; box-shadow: inset 0 0 5px rgba(251,146,60,0.2);}
-        .editable-cell { cursor: text; transition: all 0.2s; border-radius: 4px; padding: 2px; }
-        .editable-cell:focus { outline: 2px solid #6366f1; background-color: #e0e7ff; box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
-
-        @media print {
-            .no-print { display: none !important; }
-            .glass-card { background: white !important; backdrop-filter: none; box-shadow: none; border: 1px solid black; }
-            .sticky-col-1, .sticky-col-2, .sticky-col-3 { position: static !important; border: 1px solid black !important; }
-            body { background: white; padding: 0; }
+        th.sticky-col {
+            z-index: 50;
+            background-color: #f1f5f9 !important;
         }
 
-        /* Premium Loader */
-        #global-loader {
-            position: fixed; inset: 0; background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s;
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #1e293b;
+            font-size: 0.875rem;
+            background-color: white;
         }
-        .spinner { border: 4px solid #e2e8f0; border-top-color: #f97316; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Small Minimalist Toast */
-        .toast-show { transform: translate(-50%, 0) scale(1) !important; opacity: 1 !important; }
-        .toast-hide { transform: translate(-50%, 20px) scale(0.95) !important; opacity: 0 !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        #toast {
+            visibility: hidden;
+            min-width: 280px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: center;
+            border-radius: 12px;
+            padding: 12px 24px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 40px;
+            transform: translateX(-50%);
+        }
+        #toast.show { visibility: visible; animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s; }
+
+        .search-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            background: #e0e7ff;
+            color: #4338ca;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .row-label-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+        }
+        .row-highlight-1 { color: #4f46e5; }
+        .row-highlight-2 { color: #0891b2; }
+        .row-highlight-3 { color: #059669; }
+        .row-highlight-4 { color: #d97706; }
+        .row-highlight-5 { color: #dc2626; }
+
+        .copy-btn-small {
+            padding: 4px 8px;
+            font-size: 10px;
+            background: #f1f5f9;
+            color: #64748b;
+            border-radius: 6px;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .copy-btn-small:hover { background: #e2e8f0; color: #1e293b; }
     </style>
 </head>
-<body class="p-3 lg:p-8 min-h-screen">
+<body class="min-h-screen text-slate-800">
 
-    <div id="global-loader">
-        <div class="spinner mb-4 shadow-lg"></div>
-        <h2 class="text-lg font-bold text-slate-700 tracking-wide">กำลังประมวลผล...</h2>
+    <div id="toast">คัดลอกข้อมูลสำเร็จแล้ว</div>
+
+    <!-- View 1: Upload -->
+    <div id="uploadView" class="flex flex-col items-center justify-center min-h-screen p-6 animate-slide-in">
+        <div class="max-w-2xl w-full text-center">
+            <h1 class="text-4xl font-extrabold text-slate-900 mb-2">Excel Smart Analysis</h1>
+            <p class="text-slate-500 mb-10">แสดงผลเฉพาะวันที่ที่มีข้อมูลในไฟล์ (Exact Match)</p>
+            
+            <div id="dropZone" class="drop-area rounded-3xl p-12 shadow-sm cursor-pointer border-slate-200">
+                <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6 mx-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">ลากไฟล์ Excel มาวางที่นี่</h3>
+                <button class="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl mt-4">เลือกไฟล์</button>
+                <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls">
+            </div>
+        </div>
     </div>
 
-    <div class="max-w-[1700px] mx-auto">
-        
-        <!-- Header Section -->
-        <div class="glass-card flex flex-col md:flex-row justify-between items-center mb-8 gap-4 p-5 lg:px-8 lg:py-6 rounded-3xl">
-            <div>
-                <h1 class="text-4xl lg:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-slate-800 to-indigo-900 drop-shadow-sm pb-1">
-                    MLPR <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-rose-500">DASHBOARD</span> 
-                    <span class="inline-flex items-center gap-1.5 text-[11px] bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full align-middle ml-2 border border-emerald-200 shadow-sm font-bold uppercase tracking-widest">
-                        <span class="relative flex h-2 w-2">
-                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        Cloud
-                    </span>
-                </h1>
-                <p id="dashboard-subtitle" class="text-slate-500 font-medium mt-1 pl-1 text-sm">ระบบบันทึกและสรุปยอดงานประจำเดือน พฤษภาคม 2026</p>
-            </div>
-            <div class="flex gap-3 no-print">
-                <!-- Hover Animated Buttons -->
-                <button onclick="fetchFromCloud()" class="btn-pop bg-gradient-to-b from-white to-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-2xl font-bold flex items-center gap-2 text-sm shadow-sm hover:text-emerald-600 hover:border-emerald-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> โหลดข้อมูลล่าสุด
-                </button>
-                <button onclick="toggleSupervisorMode()" class="btn-pop bg-gradient-to-r from-indigo-600 to-blue-600 text-white px-5 py-2.5 rounded-2xl font-bold flex items-center gap-2 shadow-md hover:shadow-indigo-500/30 border border-indigo-500/50 text-sm" id="sup-btn">
-                    <svg class="w-4 h-4 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    <span id="sup-btn-text" class="drop-shadow-sm">แก้ไขสำหรับ Sup/Assist</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="mb-4 flex items-center justify-between no-print px-1">
-            <h2 class="text-xl font-extrabold flex items-center gap-3 text-slate-800 tracking-wide">
-                <span class="bg-gradient-to-b from-orange-400 to-rose-500 w-2.5 h-7 rounded-full shadow-sm"></span>
-                1. กรอกข้อมูลรายวัน & ตารางงานเดือนปัจจุบัน
-            </h2>
-            <div class="glass-card px-4 py-1.5 rounded-2xl flex items-center gap-3 border-orange-100 hover:shadow-lg hover:border-orange-200 transition-all">
-                <span class="font-bold text-slate-500 text-sm">ระบุวันที่:</span>
-                <input type="date" id="entry-date" class="border-b-2 border-orange-300 focus:border-orange-500 bg-transparent transition-colors focus:outline-none font-bold text-orange-600 mr-1 cursor-pointer text-sm py-1">
-                <button onclick="saveDailyData()" class="btn-pop bg-gradient-to-r from-orange-500 to-rose-500 text-white px-4 py-1.5 rounded-xl shadow-md hover:shadow-orange-500/30 font-bold text-xs transition-all flex items-center gap-1.5">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-                    บันทึกข้อมูล
-                </button>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-10 no-print items-start">
-            
-            <div class="xl:col-span-6">
-                <div class="glass-card input-card rounded-3xl">
-                    <div class="overflow-x-auto">
-                        <table class="input-table w-full border-none">
-                            <thead>
-                                <tr class="input-header-row1">
-                                    <th class="col-name text-xs rounded-tl-xl border-l-0 border-t-0">วันนี้</th>
-                                    <th colspan="6" id="display-date-label" class="text-sm tracking-wide border-t-0">7 พ.ค. 2026</th>
-                                    <th class="text-[10px] border-t-0">กะงาน</th>
-                                    <th class="cell-a w-14 rounded-tr-xl border-r-0 border-t-0" style="padding: 0;">
-                                        <input type="text" id="daily-shift-input" class="w-full text-center bg-transparent outline-none text-xl font-bold text-[#78350f]" placeholder="-">
-                                    </th>
-                                </tr>
-                                <tr class="input-header-row2 shadow-sm relative z-10 text-[11px]">
-                                    <th class="col-name border-l-0">ชื่อ</th>
-                                    <th class="col-task col-ml">ML</th>
-                                    <th class="col-task col-mn">MN</th>
-                                    <th class="col-task col-rcf">RCF</th>
-                                    <th class="col-task col-txn">TXN</th>
-                                    <th class="col-task col-inq">สอบ</th>
-                                    <th class="col-task col-log">LOG</th>
-                                    <th class="col-task col-conv">ขบวน</th>
-                                    <th class="col-task col-qc border-r-0">QC</th>
-                                </tr>
-                            </thead>
-                            <tbody id="input-tbody">
-                                <!-- JS Generated -->
-                            </tbody>
-                        </table>
+    <!-- View 2: Data Dashboard -->
+    <div id="dataView" class="hidden flex flex-col min-h-screen">
+        <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-6">
+                <div class="flex items-center gap-4 shrink-0">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">EX</div>
+                    <div class="hidden sm:block">
+                        <h2 id="fileNameLabel" class="font-bold text-slate-800 truncate max-w-[150px]">ไฟล์: -</h2>
+                        <span id="rowCountLabel" class="text-xs text-slate-500 font-medium tracking-tight">พบ 0 รายการ</span>
                     </div>
                 </div>
-            </div>
 
-            <div class="xl:col-span-6 h-full">
-                <div class="glass-card rounded-3xl overflow-hidden flex flex-col h-full border border-slate-200/60">
-                    <div class="bg-gradient-to-r from-slate-700 to-slate-800 text-white font-bold px-5 py-3 flex justify-between items-center text-xs shadow-md relative z-10 border-b border-slate-600">
-                        <span class="flex items-center gap-2">
-                            <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            ตารางงานทีมเดือนปัจจุบัน
-                        </span>
-                        <span class="text-[10px] text-slate-300 font-normal opacity-80">(อัปเดตตามเดือนที่เลือก)</span>
-                    </div>
-                    <div class="overflow-x-auto bg-white/50">
-                        <table class="w-full text-[10px] text-center border-collapse">
-                            <thead id="schedule-thead" class="bg-slate-50/80 border-b border-slate-200 text-slate-600 backdrop-blur-sm">
-                                <!-- JS Generated -->
-                            </thead>
-                            <tbody id="schedule-tbody">
-                                <!-- JS Generated -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <h2 class="text-xl font-extrabold flex items-center gap-3 text-slate-800 mb-6 mt-12 px-1">
-            <span class="bg-gradient-to-b from-indigo-500 to-blue-600 w-2.5 h-7 rounded-full shadow-sm"></span>
-            2. ตารางสรุปยอดรวม (รายเดือน)
-        </h2>
-
-        <div id="holiday-management-panel" class="hidden glass-card border border-indigo-100 rounded-[2rem] p-6 mb-8 shadow-xl shadow-indigo-100/40 no-print relative overflow-hidden bg-indigo-50/60">
-            <div class="absolute top-0 right-0 w-40 h-40 bg-white rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-60"></div>
-            <h3 class="text-indigo-800 font-bold mb-5 flex items-center gap-2.5 text-base">
-                <span class="bg-white p-1.5 rounded-xl shadow-sm text-indigo-600">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                </span>
-                ตั้งค่าวันหยุด / กะทำงานของทีม 
-                <span class="text-xs font-medium text-indigo-500 bg-white/60 px-3 py-1 rounded-full border border-indigo-100 shadow-sm backdrop-blur-sm">(อัปเดตไปที่ตารางงานเดือนปัจจุบัน)</span>
-            </h3>
-            <div class="flex flex-wrap items-end gap-4 relative z-10">
-                <div>
-                    <label class="block text-[10px] font-bold text-indigo-500 mb-1.5 uppercase tracking-wider">เลือกพนักงาน</label>
-                    <select id="holiday-staff-select" class="border-0 bg-white/90 focus:ring-2 focus:ring-indigo-300 rounded-xl px-4 py-2.5 text-sm font-bold outline-none min-w-[140px] shadow-sm transition-all cursor-pointer">
-                        <option value="ALL">ทั้งทีม (ทุกคน)</option>
-                        <option value="0">ปอร์</option>
-                        <option value="1">ภีม</option>
-                        <option value="2">มิ</option>
-                        <option value="3">เป๋าเป้</option>
+                <div class="shrink-0 flex items-center gap-2">
+                    <select id="shiftSelector" class="px-3 py-2.5 bg-slate-100 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold">
+                        <option value="night" selected>🌙 กะกลางคืน</option>
+                        <option value="day">☀️ กะกลางวัน</option>
+                    </select>
+                    
+                    <select id="teamSelector" class="px-3 py-2.5 bg-indigo-50 text-indigo-700 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm font-bold cursor-pointer hover:bg-indigo-100 transition-colors">
+                        <option value="">👥 เลือกทีม (ทั้งหมด)</option>
+                        <option value="1">ทีม 1</option>
+                        <option value="2">ทีม 2</option>
+                        <option value="3">ทีม 3</option>
+                        <option value="4">ทีม 4</option>
+                        <option value="5">ทีม 5</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-indigo-500 mb-1.5 uppercase tracking-wider">ระบุช่วงวันที่</label>
-                    <div class="flex items-center gap-2 bg-white/90 rounded-xl px-3 py-1 shadow-sm focus-within:ring-2 focus-within:ring-indigo-300 transition-all">
-                        <input type="date" id="holiday-date-select" class="border-none px-1 py-1.5 text-sm font-bold outline-none bg-transparent cursor-pointer text-slate-700">
-                        <span class="text-xs font-bold text-indigo-300">ถึง</span>
-                        <input type="date" id="holiday-date-end" class="border-none px-1 py-1.5 text-sm font-bold outline-none bg-transparent cursor-pointer text-slate-700">
+
+                <div class="relative flex-grow w-full max-w-2xl">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input type="text" id="searchInput" placeholder="พิมพ์ชื่อให้ตรงตัว (แยกด้วยคอมม่า เช่น สมชาย, สมหญิง)..." class="block w-full pl-11 pr-24 py-3 bg-slate-100 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+                    
+                    <div class="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+                        <button id="clearSearchBtn" title="ล้างการค้นหา" class="hidden p-1.5 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-indigo-500 mb-1.5 uppercase tracking-wider">สถานะใหม่</label>
-                    <select id="holiday-type-select" onchange="togglePartialLeaveOptions()" class="border-0 bg-white/90 focus:ring-2 focus:ring-indigo-300 rounded-xl px-4 py-2.5 text-sm font-bold outline-none shadow-sm transition-all cursor-pointer">
-                        <option value="SHIFT-A">กะ A</option>
-                        <option value="SHIFT-B">กะ B</option>
-                        <option value="SHIFT-C">กะ C</option>
-                        <option value="WEEKLY">วันหยุดประจำสัปดาห์</option>
-                        <option value="LEAVE">วันหยุดพักร้อน (เต็มวัน)</option>
-                        <option value="PARTIAL_LEAVE">พักร้อนแบบระบุช่วงเวลา</option>
-                        <option value="SWAP">สลับวันหยุดกับเพื่อน</option>
-                    </select>
-                </div>
-                
-                <div id="partial-leave-options" class="hidden gap-2 items-center">
-                    <select id="partial-leave-type" onchange="toggleHoursInput()" class="border-0 bg-white/90 focus:ring-2 focus:ring-indigo-300 rounded-xl px-3 py-2.5 text-sm font-bold outline-none shadow-sm transition-all cursor-pointer">
-                        <option value="เช้า">ครึ่งวันแรก</option>
-                        <option value="บ่าย">ครึ่งวันหลัง</option>
-                        <option value="ระบุชั่วโมง">ระบุชั่วโมง</option>
-                    </select>
-                    <input type="number" id="partial-leave-hours" class="hidden border-0 bg-white/90 focus:ring-2 focus:ring-indigo-300 rounded-xl px-3 py-2.5 text-sm font-bold outline-none w-20 shadow-sm" placeholder="ชม.">
-                </div>
 
-                <div class="flex gap-2 ml-1">
-                    <button onclick="applyHoliday()" class="btn-pop bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-xl text-sm transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2">
-                        บันทึกตาราง
-                    </button>
-                    <button onclick="resetHolidayToCalendar()" class="btn-pop bg-white/80 border border-white text-slate-500 hover:text-red-500 font-bold py-2.5 px-4 rounded-xl text-sm transition-all shadow-sm">
-                        ล้างค่า
-                    </button>
+                <button onclick="resetApp()" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">เปลี่ยนไฟล์</button>
+            </div>
+            <div id="searchTags" class="max-w-7xl mx-auto mt-2 flex flex-wrap gap-2 px-6"></div>
+        </header>
+
+        <main class="max-w-7xl mx-auto w-full p-6 space-y-10 animate-slide-in">
+            <!-- ส่วนที่ 4 -->
+            <section id="grandSummarySection">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-2 h-6 bg-indigo-600 rounded-full"></div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">ส่วนที่ 4: สรุปยอดกะกลางคืน (เฉพาะวันที่ในไฟล์)</h3>
+                    </div>
                 </div>
-            </div>
-            <p class="text-[11px] text-indigo-400 mt-4 relative z-10 flex items-center gap-1.5 font-medium">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Tip: คุณสามารถลากคลุม (Copy) ข้อมูลจาก Excel แล้วคลิกวาง (Paste) รวดเดียวในตารางด้านล่างได้เลย
-            </p>
-        </div>
+                <div id="grandSummaryTableArea" class="table-container overflow-x-auto custom-scrollbar border-indigo-100 border-2"></div>
+            </section>
 
-        <div class="glass-card summary-card">
-            <div class="table-wrapper border-none">
-                <table class="monthly-table" id="summaryTable">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" class="sticky-col-1 bg-slate-800 border-b-slate-700">เจ้าหน้าที่</th>
-                            <th rowspan="2" class="sticky-col-2 bg-slate-800 border-b-slate-700 border-l border-slate-700">Product</th>
-                            <th rowspan="2" class="sticky-col-3 bg-slate-800 border-b-slate-700 border-l border-slate-700 border-r border-slate-700">สรุปรวม</th>
-                            <th id="summary-table-header" colspan="31" class="bg-slate-800 text-center py-3 shadow-sm text-white tracking-wide border-b border-slate-700 text-sm">ระบบบันทึกและสรุปยอดงานประจำเดือน พฤษภาคม 2026</th>
-                        </tr>
-                        <tr id="date-headers" class="bg-slate-700">
-                            <!-- JS Generated -->
-                        </tr>
-                    </thead>
-                    <tbody id="summary-tbody" class="bg-white/60">
-                        <!-- JS Generated -->
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="mt-6 flex flex-col md:flex-row justify-between items-center gap-4 no-print text-sm">
-                <div class="flex items-center gap-4 text-slate-500 font-medium bg-white/80 backdrop-blur-md px-5 py-2.5 rounded-2xl shadow-sm border border-white">
-                    <span class="flex items-center gap-2 text-[11px]"><div class="w-3 h-3 bg-red-50 border border-red-200 rounded-sm"></div> รออนุมัติ/QC</span>
-                    <span class="flex items-center gap-2 text-[11px]"><div class="w-3 h-3 bg-slate-50 border border-slate-200 rounded-sm"></div> หยุดเต็มวัน</span>
-                    <span class="flex items-center gap-2 text-[11px]"><div class="w-3 h-3 bg-green-50 border border-green-200 rounded-sm"></div> พักร้อน</span>
-                    <span class="flex items-center gap-2 text-[11px]"><div class="w-3 h-3 bg-purple-50 border border-purple-200 rounded-sm"></div> สลับวัน</span>
+            <!-- ส่วนที่ 5 -->
+            <section id="dayShiftSummarySection" class="hidden">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-2 h-6 bg-amber-500 rounded-full"></div>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-900">ส่วนที่ 5: สรุปยอดกะกลางวัน (เฉพาะวันที่ในไฟล์)</h3>
+                    </div>
                 </div>
-                <div class="flex items-center gap-4">
-                    <span id="paste-info" class="text-xs text-indigo-600 font-bold hidden flex items-center gap-1.5 bg-indigo-50/80 px-4 py-2 rounded-xl border border-indigo-100 shadow-sm backdrop-blur-sm">
-                        <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                        สามารถวาง (Paste) ข้อมูลลงตารางได้
-                    </span>
+                <div id="daySummaryTableArea" class="table-container overflow-x-auto custom-scrollbar border-amber-100 border-2"></div>
+            </section>
+
+            <!-- ข้อมูลหลัก -->
+            <section>
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-2 h-6 bg-slate-400 rounded-full"></div>
+                    <h3 class="text-xl font-bold text-slate-900">ตารางข้อมูลดิบ</h3>
                 </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Small Minimalist Toast -->
-    <div id="toast" class="toast-hide fixed bottom-6 left-1/2 bg-slate-800/95 backdrop-blur-md text-white px-3 py-2 rounded-xl shadow-xl flex items-center gap-2 z-50 pointer-events-none border border-slate-700/50">
-        <div id="toast-icon-container" class="flex items-center justify-center">
-            <svg id="toast-icon" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
-        </div>
-        <span id="toast-msg" class="text-[11px] font-medium tracking-wide pr-1">บันทึกเรียบร้อย</span>
-    </div>
-
-    <!-- Glassmorphism Auth Modal -->
-    <div id="auth-modal" class="fixed inset-0 bg-slate-900/30 backdrop-blur-sm hidden items-center justify-center z-[100] transition-opacity">
-        <div class="bg-white/95 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl w-80 border border-white/60 transform scale-95 transition-transform duration-300" id="auth-modal-content">
-            <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-5 mx-auto shadow-inner border border-indigo-100">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-            </div>
-            <h3 class="text-lg font-bold text-slate-800 mb-1 text-center">ยืนยันสิทธิ์หัวหน้างาน</h3>
-            <p class="text-[11px] text-slate-400 mb-6 text-center">กรุณาระบุรหัสผ่านเพื่อปลดล็อกโหมดแก้ไข</p>
-            
-            <!-- แก้ไขช่องกรอกรหัสตรงนี้เพื่อป้องกันเบราว์เซอร์เด้งถามให้ Save รหัสผ่าน -->
-            <input type="text" id="auth-password" class="w-full bg-slate-50 border-0 rounded-xl px-4 py-3 text-sm font-bold text-center focus:ring-2 focus:ring-indigo-400 transition-all outline-none mb-2 shadow-inner" style="-webkit-text-security: disc;" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-form-type="other" placeholder="••••••••">
-            
-            <p id="auth-error" class="text-red-500 text-[10px] font-bold hidden mb-4 text-center animate-pulse">รหัสผ่านไม่ถูกต้อง</p>
-            <div class="flex gap-2 mt-6">
-                <button onclick="closeAuthModal()" class="flex-1 bg-white hover:bg-slate-50 border border-slate-200 text-slate-500 font-bold py-2.5 rounded-xl transition-colors text-xs shadow-sm">ยกเลิก</button>
-                <button onclick="verifyAuth()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-bold py-2.5 rounded-xl transition-all text-xs btn-pop">ยืนยัน</button>
-            </div>
-        </div>
+                <div class="table-container max-h-[500px] overflow-auto custom-scrollbar border border-slate-200">
+                    <div id="mainTableArea"></div>
+                </div>
+            </section>
+        </main>
     </div>
 
     <script>
-        const CLOUD_URL = "https://script.google.com/macros/s/AKfycbwBrabGQXuYZ9-LYaLof2hPsnrSnael7Cc_4d5n64ZyDoQ4M2BsunG1fcN6TVRqM4uZPQ/exec";
-
-        const STAFF_MAP = [
-            { id: 0, fullName: "นายพงศกร วัดเซ่ง", nickName: "ปอร์", class: "row-por" },
-            { id: 1, fullName: "นายกฤตภัค อยู่เป็นสุข", nickName: "ภีม", class: "row-pime" },
-            { id: 2, fullName: "นางสาวฮารุมิ อุตตะรี", nickName: "มิ", class: "row-mi" },
-            { id: 3, fullName: "นายเพชรนรินทร์ แย้มสาย", nickName: "เป๋าเป้", class: "row-peape" }
-        ];
-
-        const PRODUCT_MAP = [
-            { id: 0, label: "MLPR", short: "ML", class: "col-ml" },
-            { id: 1, label: "MNPR", short: "MN", class: "col-mn" },
-            { id: 2, label: "Reconfirm", short: "RCF", class: "col-rcf" },
-            { id: 3, label: "TXN Manual", short: "TXN", class: "col-txn" },
-            { id: 4, label: "Temp สอบถาม", short: "สอบถาม", class: "col-inq" },
-            { id: 5, label: "LOG", short: "LOG", class: "col-log" },
-            { id: 6, label: "รถขบวนเสด็จ", short: "ขบวน", class: "col-conv" },
-            { id: 7, label: "QC", short: "QC Temp", class: "col-qc" }
-        ];
-
-        let masterData = {};
+        let originalData = [];
+        let tableHeaders = [];
+        let visibleColumns = [];
+        let currentFilteredData = [];
+        let sortConfig = { key: null, direction: 'asc' };
+        let dateColumnIndex = -1;
+        let lastSearchQueries = [];
+        let availableDatesInFile = [];
         
-        let currentYear = 2026;
-        let currentMonth = 4;
-        let currentDay = 7;
-        let daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-        const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+        let lastGrandMatrix = []; 
+        let lastDayMatrix = [];
 
-        let isSupervisorMode = false;
+        function initApp() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const searchInput = document.getElementById('searchInput');
+            const shiftSelector = document.getElementById('shiftSelector');
+            const teamSelector = document.getElementById('teamSelector');
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
 
-        const HOLIDAY_TYPES = {
-            'WEEKLY': { label: 'วันหยุดประจำสัปดาห์', class: 'holiday-weekly' },
-            'LEAVE': { label: 'วันหยุดพักร้อน', class: 'holiday-leave' },
-            'SWAP': { label: 'สลับวันหยุดกับเพื่อน', class: 'holiday-swap' }
-        };
+            dropZone.onclick = () => fileInput.click();
+            fileInput.onchange = (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); };
 
-        async function fetchFromCloud() {
-            document.getElementById('global-loader').style.display = 'flex';
-            setTimeout(() => document.getElementById('global-loader').style.opacity = '1', 10);
-            try {
-                if(CLOUD_URL !== "วาง URL ของเว็บแอปที่นี่") {
-                    const response = await fetch(CLOUD_URL);
-                    masterData = await response.json();
-                } else {
-                    masterData = JSON.parse(localStorage.getItem('mlpr_v5_final')) || {};
+            searchInput.oninput = () => {
+                if (teamSelector.value !== "") teamSelector.value = "";
+                const queries = searchInput.value.split(/[,,| ]/).map(s => s.trim()).filter(s => s !== "").slice(0, 5);
+                performSearch(queries);
+            };
+
+            teamSelector.onchange = () => {
+                const team = teamSelector.value;
+                let names = "";
+                switch(team) {
+                    case "1": names = "ดีดี๊,หมวย,ปาล์ม,เป๊ปซี่"; break;
+                    case "2": names = "เบ๊บ,เฟิร์ส,มันแกว,เดีย,ฟีม"; break;
+                    case "3": names = "ปอลี่,ภีม,พี่มิ,เป๋าเป้"; break;
+                    case "4": names = "ป็อป,ไอซ์,นิว,ปุ้ก,พี่มด"; break;
+                    case "5": names = "นนท์,เบียร์,แนน,ซัน"; break;
+                    default: names = "";
                 }
-                localStorage.setItem('mlpr_v5_final', JSON.stringify(masterData));
-            } catch(e) {
-                console.error("Cloud Error:", e);
-                masterData = JSON.parse(localStorage.getItem('mlpr_v5_final')) || {};
+                searchInput.value = names;
+                const queries = names.split(',').map(s => s.trim()).filter(s => s !== "");
+                performSearch(queries);
+            };
+
+            function performSearch(queries) {
+                lastSearchQueries = queries;
+                if (searchInput.value.length > 0) clearSearchBtn.classList.remove('hidden');
+                else clearSearchBtn.classList.add('hidden');
+                document.getElementById('searchTags').innerHTML = queries.map(q => `<span class="search-badge">${q}</span>`).join('');
+                filterData(queries);
             }
-            document.getElementById('global-loader').style.opacity = '0';
-            setTimeout(() => document.getElementById('global-loader').style.display = 'none', 500);
-            updateLabels(); renderDateHeaders(); renderInputTable(); renderScheduleTable(); renderSummaryTable();
+
+            clearSearchBtn.onclick = () => {
+                searchInput.value = "";
+                teamSelector.value = "";
+                lastSearchQueries = [];
+                clearSearchBtn.classList.add('hidden');
+                document.getElementById('searchTags').innerHTML = "";
+                filterData([]);
+                searchInput.focus();
+            };
+
+            shiftSelector.onchange = () => {
+                const isDay = shiftSelector.value === 'day';
+                document.getElementById('dayShiftSummarySection').classList.toggle('hidden', !isDay);
+                document.getElementById('grandSummarySection').classList.toggle('hidden', isDay);
+            };
         }
 
-        let syncTimer;
-        // ปรับปรุงฟังก์ชัน syncData: ค่าเริ่มต้นคือบันทึกแค่ในเครื่อง (Local) จะซิงค์ Cloud เฉพาะเมื่อ pushToCloud เป็น true
-        function syncData(pushToCloud = false) {
-            // บันทึกเก็บไว้ในเครื่องกันข้อมูลหายเวลารีเฟรช
-            localStorage.setItem('mlpr_v5_final', JSON.stringify(masterData));
-            
-            // หากไม่ได้กดปุ่ม "บันทึกข้อมูล" ให้หยุดการทำงานแค่นี้ ไม่ต้องส่งขึ้น Cloud
-            if (!pushToCloud) return;
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
 
-            clearTimeout(syncTimer);
-            showToast("กำลังซิงค์...", "yellow");
-            syncTimer = setTimeout(async () => {
-                try {
-                    if(CLOUD_URL !== "วาง URL ของเว็บแอปที่นี่") {
-                        await fetch(CLOUD_URL, { method: 'POST', body: JSON.stringify(masterData) });
-                        showToast("อัปเดตข้อมูลขึ้น Cloud สำเร็จ", "green");
-                    } else {
-                        showToast("บันทึกในเครื่อง (Offline)", "green");
-                    }
-                } catch(e) {
-                    showToast("เชื่อมต่อระบบไม่สำเร็จ", "red");
-                }
-            }, 500); 
-        }
+                if (json.length > 0) {
+                    tableHeaders = json[0];
+                    let rawData = json.slice(1);
+                    
+                    const nameMap = {
+                        "MLPR_Surachet.th": "เป้", "MLPR_Phogsakorn.wad": "ปอลี่", "MLPR_Siriwan.put": "เบียร์",
+                        "TG_Anon.cha": "นนท์", "MLPR_Atcharaporn.ch": "พี่แนน", "MLPR_Chanokwan.kan": "เดีย",
+                        "TG_Pakin.pl": "ซัน", "TG_Sitthinon.kae": "นิว", "TG_Wannarat.dou": "หมวย",
+                        "MLPR_Phanupong.ko": "เป๊ปซี่", "MLPR_Thanawat.utt": "ปาล์ม", "MLPR_Harumi.ut": "พี่มิ",
+                        "MLPR_Kanthika.nap": "ฟีม", "MLPR_Oracha.wi": "มันแกว", "MLPR_Pakkawat.boo": "ไอซ์",
+                        "MLPR_Patiwet.nua": "เบ๊บ", "MLPR_Phetnarin.yae": "เป๋าเป้", "MLPR_Piyavan.see": "ปุ้ก",
+                        "TG_Aekkarat.ama": "เฟิร์ส", "TG_Auttapinuya.sin": "ฟ้า", "TG_Maneerat.sae": "ป็อป",
+                        "MLPR_Wisarut.moo": "ดีดี๊", "TG_Kanokrat.yue": "พี่มด", "TG_Kittapak.yoo": "ภีม"
+                    };
 
-        function getKey(sId, pId, day) { return (currentYear === 2026 && currentMonth === 4) ? `${sId}-${pId}-${day}` : `${currentYear}-${currentMonth}-${sId}-${pId}-${day}`; }
-        function getShiftKey(day) { return (currentYear === 2026 && currentMonth === 4) ? `shift-${day}` : `shift-${currentYear}-${currentMonth}-${day}`; }
-        
-        function getScheduleVal(year, month, day, staffId) {
-            const key = `sch-${year}-${month}-${day}-${staffId}`;
-            if (masterData[key] !== undefined) return masterData[key];
-            const dayOfWeek = new Date(year, month, day).getDay();
-            // วันหยุดประจำสัปดาห์คือ วันศุกร์ (5) และ วันเสาร์ (6)
-            return (dayOfWeek === 5 || dayOfWeek === 6) ? 'หยุด' : '';
-        }
-
-        function getHolTypeFromSch(schVal) {
-            if (schVal === 'หยุด') return 'WEEKLY';
-            if (schVal === 'ลา') return 'LEAVE'; 
-            if (schVal === 'สลับ') return 'SWAP';
-            return 'WORK'; 
-        }
-
-        window.onload = function() { setupDatePicker(); fetchFromCloud(); };
-
-        function setupDatePicker() {
-            const picker = document.getElementById('entry-date');
-            picker.value = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`;
-            picker.addEventListener('change', (e) => {
-                const date = new Date(e.target.value);
-                if (!isNaN(date.getTime())) {
-                    currentYear = date.getFullYear(); currentMonth = date.getMonth(); currentDay = date.getDate();
-                    daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate(); 
-                    updateLabels(); renderDateHeaders(); renderInputTable(); renderScheduleTable(); renderSummaryTable();
-                }
-            });
-            updateLabels();
-        }
-
-        function updateLabels() {
-            const dateObj = new Date(currentYear, currentMonth, currentDay);
-            document.getElementById('display-date-label').textContent = dateObj.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-            document.getElementById('dashboard-subtitle').textContent = `ระบบบันทึกและสรุปยอดงานประจำเดือน ${thaiMonths[currentMonth]} ${currentYear}`;
-            document.getElementById('summary-table-header').textContent = `ระบบบันทึกและสรุปยอดงานประจำเดือน ${thaiMonths[currentMonth]} ${currentYear}`;
-            document.getElementById('summary-table-header').colSpan = daysInMonth; 
-            document.getElementById('daily-shift-input').value = masterData[getShiftKey(currentDay)] || '';
-            document.getElementById('holiday-date-select').value = document.getElementById('entry-date').value;
-        }
-
-        function renderDateHeaders() {
-            const row = document.getElementById('date-headers');
-            row.innerHTML = '';
-            for (let i = 1; i <= daysInMonth; i++) {
-                const th = document.createElement('th');
-                let allHoliday = true;
-                STAFF_MAP.forEach(s => { 
-                    let schVal = getScheduleVal(currentYear, currentMonth, i, s.id);
-                    if (getHolTypeFromSch(schVal) === 'WORK') allHoliday = false; 
-                });
-                const shift = masterData[getShiftKey(i)];
-                const shiftColor = allHoliday ? "text-slate-400" : "text-amber-400";
-                const shiftText = shift ? ` <span class="${shiftColor} text-[9px] font-bold whitespace-nowrap bg-slate-800/50 px-1 rounded shadow-inner">(${shift})</span>` : '';
-                th.innerHTML = `<div class="flex flex-col items-center justify-center gap-0.5 text-white">${i}${shiftText}</div>`;
-                th.className = `day-cell ${allHoliday ? "bg-slate-700/80" : "bg-slate-700"} border-b border-r border-slate-600 p-1`;
-                row.appendChild(th);
-            }
-        }
-
-        function renderScheduleTable() {
-            const thead = document.getElementById('schedule-thead');
-            const tbody = document.getElementById('schedule-tbody');
-            thead.innerHTML = ''; tbody.innerHTML = '';
-            let headTr = document.createElement('tr');
-            headTr.innerHTML = '<th class="py-1 border-r border-slate-200 min-w-[50px] sticky left-0 bg-slate-50/90 backdrop-blur-sm z-20">ชื่อ</th>';
-            for(let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(currentYear, currentMonth, d);
-                const dayName = dateObj.toLocaleDateString('th-TH', { weekday: 'short' });
-                const isToday = d === currentDay; 
-                // สีตารางแสดงวันหยุด ให้เป็น ศุกร์ (5) กับ เสาร์ (6)
-                const isWeekend = dateObj.getDay() === 5 || dateObj.getDay() === 6;
-                headTr.innerHTML += `<th class="schedule-cell border-r border-slate-200 ${isToday ? 'schedule-today text-orange-600 font-black' : ''} ${isWeekend ? 'bg-slate-100/50 text-slate-400' : ''}">
-                    ${d}<br><span class="text-[8px] font-normal opacity-70">${dayName}</span>
-                </th>`;
-            }
-            thead.appendChild(headTr);
-            STAFF_MAP.forEach(staff => {
-                let tr = document.createElement('tr');
-                tr.className = "border-b border-slate-100 last:border-0 hover:bg-white/60 transition-colors";
-                tr.innerHTML = `<td class="py-1 border-r border-slate-200 font-bold text-slate-700 bg-white/90 backdrop-blur-sm sticky left-0 z-10">${staff.nickName}</td>`;
-                for(let d = 1; d <= daysInMonth; d++) {
-                    const schVal = getScheduleVal(currentYear, currentMonth, d, staff.id);
-                    const holType = getHolTypeFromSch(schVal);
-                    let cellClass = 'schedule-cell border-r border-slate-100 font-bold text-[10px] ';
-                    if (d === currentDay) cellClass += ' bg-orange-50/50'; 
-                    if (holType === 'WEEKLY') cellClass += ' bg-slate-50/50 text-slate-400';
-                    else if (holType === 'LEAVE') cellClass += ' bg-green-50/50 text-green-600';
-                    else if (holType === 'SWAP') cellClass += ' bg-purple-50/50 text-purple-600';
-                    else if (schVal.includes('ลา')) cellClass += ' bg-teal-50/50 text-teal-600'; 
-                    else cellClass += ' text-blue-600'; 
-                    const td = document.createElement('td'); td.className = cellClass;
-                    if (isSupervisorMode) {
-                        td.innerHTML = `<div contenteditable="true" class="editable-cell min-h-[20px] w-full outline-none flex items-center justify-center" 
-                            onblur="updateScheduleValue(${staff.id}, ${d}, this.textContent)"
-                            onpaste="handlePasteInSchedule(event, ${staff.id}, ${d})"
-                            onkeypress="if(event.which === 13) { event.preventDefault(); event.target.blur(); }">${schVal}</div>`;
-                    } else { td.textContent = schVal; }
-                    tr.appendChild(td);
-                }
-                tbody.appendChild(tr);
-            });
-        }
-
-        window.updateScheduleValue = function(sId, day, val) {
-            const key = `sch-${currentYear}-${currentMonth}-${day}-${sId}`;
-            const cleanVal = val.trim();
-            if (!cleanVal) delete masterData[key]; else masterData[key] = cleanVal;
-            // ใส่ false เพื่อบันทึกเฉพาะในเครื่อง รอส่ง Cloud เมื่อกดปุ่ม
-            renderScheduleTable(); renderSummaryTable(); renderDateHeaders(); syncData(false);
-        };
-
-        window.handlePasteInSchedule = function(e, startSId, startDay) {
-            e.preventDefault(); e.target.onblur = null; 
-            const pastedText = (e.clipboardData || window.clipboardData).getData('Text');
-            if (!pastedText) return;
-            const rows = pastedText.split(/\r\n|\n|\r/);
-            rows.forEach((row, rowOffset) => {
-                if (row.trim() === "") return;
-                const cols = row.split('\t'); const targetSId = startSId + rowOffset;
-                if (targetSId < STAFF_MAP.length) {
-                    cols.forEach((col, colOffset) => {
-                        const targetDay = startDay + colOffset;
-                        if (targetDay <= daysInMonth) {
-                            let value = col.trim(); if (value.startsWith('"') && value.endsWith('"')) value = value.substring(1, value.length - 1);
-                            const key = `sch-${currentYear}-${currentMonth}-${targetDay}-${targetSId}`;
-                            if (value === "") delete masterData[key]; else masterData[key] = value;
-                        }
-                    });
-                }
-            });
-            renderScheduleTable(); renderSummaryTable(); renderDateHeaders(); syncData(false); 
-            showToast('วางข้อมูลลงตารางงานสำเร็จ (รอส่งขึ้น Cloud)');
-        };
-
-        function renderInputTable() {
-            const tbody = document.getElementById('input-tbody');
-            tbody.innerHTML = '';
-            STAFF_MAP.forEach(staff => {
-                const tr = document.createElement('tr'); tr.className = staff.class;
-                const tdName = document.createElement('td'); tdName.className = "col-name font-black text-black py-2 border-l-0"; tdName.textContent = staff.nickName; tr.appendChild(tdName);
-                PRODUCT_MAP.forEach((prod, pIdx) => {
-                    const td = document.createElement('td'); td.className = `col-task ${pIdx === PRODUCT_MAP.length -1 ? 'border-r-0' : ''}`;
-                    const input = document.createElement('input'); input.type = 'number'; input.className = `input-field ${prod.class}`;
-                    input.placeholder = '-'; input.id = `input-${staff.id}-${prod.id}`;
-                    const key = getKey(staff.id, prod.id, currentDay);
-                    const pendingKey = `pending-${key}`; const hasPending = masterData[pendingKey] !== undefined;
-                    if (prod.id === 7) { input.readOnly = true; input.classList.add('bg-black/5', 'opacity-60', 'rounded'); input.value = masterData[key] || ''; }
-                    else { input.value = hasPending ? masterData[pendingKey] : (masterData[key] || ''); if (hasPending) input.classList.add('text-red-600', 'bg-red-50', 'rounded-sm'); }
-                    td.appendChild(input); tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-        }
-
-        function saveDailyData() {
-            // --- ส่วนเพิ่มใหม่: ตรวจสอบการกรอกในวันหยุด ---
-            let offStaffWithInput = [];
-            
-            STAFF_MAP.forEach(staff => {
-                let isInputting = false;
-                // ตรวจสอบว่าคนนี้มีข้อมูลในช่อง Input หรือไม่
-                PRODUCT_MAP.forEach(prod => {
-                    if (prod.id === 7) return;
-                    const inputEl = document.getElementById(`input-${staff.id}-${prod.id}`); 
-                    if (inputEl && inputEl.value.trim() !== "") {
-                        isInputting = true;
-                    }
-                });
-                
-                // หากมีการกรอกยอด ให้ดูว่าเป็นวันหยุดของคนๆ นั้นหรือไม่
-                if (isInputting) {
-                    const schVal = getScheduleVal(currentYear, currentMonth, currentDay, staff.id);
-                    const holType = getHolTypeFromSch(schVal);
-                    if (holType !== 'WORK') {
-                        offStaffWithInput.push(staff);
-                    }
-                }
-            });
-
-            let hasChanges = false;
-
-            // หากเจอว่ามีคนกรอกในวันหยุด
-            if (offStaffWithInput.length > 0) {
-                // เอากะจากช่องที่กรอก ถ้าไม่มีให้ใส่คำว่า "สลับมาทำ"
-                let shiftVal = document.getElementById('daily-shift-input').value.trim().toUpperCase();
-                if (!shiftVal) {
-                    shiftVal = 'สลับมาทำ'; 
-                }
-                
-                const confirmMsg = `เนื่องจากเป็นวันหยุด มีการกดบันทึกยอด เพราะมีการการสลับวันหยุดกับเพื่อนหรือไม่\n\n(หากกดยืนยัน ระบบจะบันทึกยอดและแก้ไขกะในตารางให้เป็น: ${shiftVal})`;
-                
-                if (confirm(confirmMsg)) {
-                    // เปลี่ยนตารางเป็นวันทำงานให้อัตโนมัติ
-                    offStaffWithInput.forEach(staff => {
-                        const key = `sch-${currentYear}-${currentMonth}-${currentDay}-${staff.id}`;
-                        masterData[key] = shiftVal;
-                        hasChanges = true;
-                    });
-                } else {
-                    return; // หากกดยกเลิก ก็ไม่ต้องบันทึกอะไรเลย
-                }
-            }
-            // --- จบส่วนเพิ่มใหม่ ---
-
-            STAFF_MAP.forEach(staff => {
-                PRODUCT_MAP.forEach(prod => {
-                    if (prod.id === 7) return;
-                    const inputEl = document.getElementById(`input-${staff.id}-${prod.id}`); if (!inputEl) return;
-                    const val = inputEl.value.trim(); const key = getKey(staff.id, prod.id, currentDay);
-                    const pendingKey = `pending-${key}`; const officialVal = masterData[key];
-                    const currentPending = masterData[pendingKey]; const isApprovalRequired = (prod.id === 0 || prod.id === 1 || prod.id === 2);
-                    if (val === "") {
-                        if (officialVal !== undefined) { if (isApprovalRequired) { if (currentPending !== "") { masterData[pendingKey] = ""; hasChanges = true; } } else { delete masterData[key]; delete masterData[pendingKey]; hasChanges = true; } }
-                        else if (currentPending !== undefined) { delete masterData[pendingKey]; hasChanges = true; }
-                    } else {
-                        const parsed = parseInt(val);
-                        if (!isNaN(parsed)) {
-                            if (isApprovalRequired && officialVal !== undefined) {
-                                if (parsed !== officialVal) { if (currentPending !== parsed) { masterData[pendingKey] = parsed; hasChanges = true; } }
-                                else { if (currentPending !== undefined) { delete masterData[pendingKey]; hasChanges = true; } }
-                            } else { if (officialVal !== parsed) { masterData[key] = parsed; delete masterData[pendingKey]; hasChanges = true; } }
-                        }
-                    }
-                });
-            });
-            const sKey = getShiftKey(currentDay); const sVal = document.getElementById('daily-shift-input').value.trim().toUpperCase();
-            if (masterData[sKey] !== sVal) { masterData[sKey] = sVal; hasChanges = true; }
-            if (hasChanges) { renderDateHeaders(); renderSummaryTable(); renderInputTable(); renderScheduleTable(); }
-            
-            // สำคัญ: บังคับส่งข้อมูลทั้งหมดขึ้น Cloud เสมอเมื่อคลิกปุ่มนี้
-            syncData(true); 
-        }
-
-        window.approvePending = function(sId, pId, day) {
-            const key = getKey(sId, pId, day); const pendingKey = `pending-${key}`;
-            if (masterData[pendingKey] !== undefined) {
-                const val = masterData[pendingKey]; if (val === "") delete masterData[key]; else masterData[key] = val;
-                delete masterData[pendingKey]; renderSummaryTable(); if (day === currentDay) renderInputTable(); syncData(false);
-            }
-        };
-
-        function renderSummaryTable() {
-            const tbody = document.getElementById('summary-tbody');
-            tbody.innerHTML = '';
-            STAFF_MAP.forEach(staff => {
-                PRODUCT_MAP.forEach((prod, pIdx) => {
-                    const tr = document.createElement('tr'); if (pIdx === PRODUCT_MAP.length - 1) tr.className = "staff-divider";
-                    if (pIdx === 0) {
-                        const tdName = document.createElement('td'); tdName.rowSpan = PRODUCT_MAP.length; tdName.className = `sticky-col-1 ${staff.class} border-r-2 border-slate-300`;
-                        tdName.innerHTML = `<div class="p-2"><strong>${staff.fullName}</strong><br><span class="text-xs opacity-60">(${staff.nickName})</span></div>`; tr.appendChild(tdName);
-                    }
-                    tr.innerHTML += `<td class="sticky-col-2 ${prod.label === 'QC' ? 'qc-text' : ''} bg-white/90">${prod.label}</td>
-                                    <td class="sticky-col-3">${calculateSum(staff.id, prod.id).toLocaleString() || '-'}</td>`;
-                    for (let day = 1; day <= daysInMonth; day++) {
-                        const schVal = getScheduleVal(currentYear, currentMonth, day, staff.id);
-                        const holType = getHolTypeFromSch(schVal); 
-                        if (holType !== 'WORK' && pIdx < PRODUCT_MAP.length - 1) {
-                            if (pIdx === 0) {
-                                const tdHol = document.createElement('td'); tdHol.rowSpan = PRODUCT_MAP.length - 1; 
-                                tdHol.className = `day-cell ${HOLIDAY_TYPES[holType].class}`; tdHol.innerHTML = `<span class="vertical-text">${HOLIDAY_TYPES[holType].label}</span>`;
-                                tr.appendChild(tdHol);
-                            } continue;
-                        }
-                        const tdDay = document.createElement('td'); tdDay.className = "day-cell";
-                        if (holType !== 'WORK') tdDay.classList.add('weekend-col'); 
-                        const key = getKey(staff.id, prod.id, day); const pendingKey = `pending-${key}`; const hasPending = masterData[pendingKey] !== undefined;
-                        if (hasPending) {
-                            if (isSupervisorMode) {
-                                tdDay.innerHTML = `<div class="flex items-center justify-center gap-1">
-                                    <span class="text-red-600 font-bold cursor-text outline-none" contenteditable="true" onblur="updateValueFromSummary(${staff.id}, ${prod.id}, ${day}, this.textContent)">${masterData[pendingKey] === "" ? "-" : masterData[pendingKey]}</span>
-                                    <button onclick="approvePending(${staff.id}, ${prod.id}, ${day})" class="text-[9px] bg-green-500 text-white rounded w-4 h-4 flex items-center justify-center shadow-sm hover:bg-green-600 transition-colors">✓</button>
-                                </div>`;
-                            } else { tdDay.innerHTML = `<span class="text-red-600 font-bold">${masterData[pendingKey] === "" ? "-" : masterData[pendingKey]}</span>`; }
-                            tdDay.classList.add('bg-red-50');
-                        } else {
-                            tdDay.textContent = masterData[key] !== undefined ? masterData[key] : '';
-                            if (isSupervisorMode) {
-                                tdDay.contentEditable = true; tdDay.classList.add('bg-indigo-50/50', 'outline-indigo-400', 'hover:bg-indigo-100/50', 'transition-colors', 'rounded-sm', 'cursor-text');
-                                tdDay.onblur = (e) => updateValueFromSummary(staff.id, prod.id, day, e.target.textContent);
-                                tdDay.onpaste = (e) => handlePasteInSummary(e, staff.id, prod.id, day);
-                                tdDay.onkeypress = (e) => { if (isNaN(String.fromCharCode(e.which)) && e.which !== 13) e.preventDefault(); if (e.which === 13) { e.preventDefault(); e.target.blur(); } };
+                    originalData = rawData.map(row => {
+                        return row.map(cell => {
+                            if (typeof cell === 'string') {
+                                let updatedCell = cell;
+                                for (const [key, nickname] of Object.entries(nameMap)) {
+                                    const escapedKey = key.replace(/\./g, '\\.');
+                                    const regex = new RegExp(escapedKey, 'gi');
+                                    if (regex.test(updatedCell)) updatedCell = updatedCell.replace(regex, nickname);
+                                }
+                                return updatedCell;
                             }
-                        }
-                        tr.appendChild(tdDay);
-                    }
-                    tbody.appendChild(tr);
-                });
-            });
-        }
+                            return cell;
+                        });
+                    });
 
-        function calculateSum(sId, pId) { let t = 0; for (let d = 1; d <= daysInMonth; d++) t += (parseInt(masterData[getKey(sId, pId, d)]) || 0); return t; }
+                    dateColumnIndex = tableHeaders.findIndex(h => String(h).includes('วัน'));
+                    if (dateColumnIndex === -1) dateColumnIndex = 0;
 
-        function updateValueFromSummary(sId, pId, day, val) {
-            const key = getKey(sId, pId, day); const cleanVal = val.trim().replace(/[,"]/g, '');
-            if (!cleanVal || cleanVal === "-") delete masterData[key];
-            else { const parsed = parseInt(cleanVal); if (!isNaN(parsed)) masterData[key] = parsed; }
-            delete masterData[`pending-${key}`]; renderSummaryTable(); if (day === currentDay) renderInputTable(); syncData(false);
-        }
+                    // ดึงเฉพาะวันที่ที่มีอยู่ในไฟล์จริงๆ
+                    availableDatesInFile = [...new Set(originalData.map(row => row[dateColumnIndex] || 'N/A'))]
+                        .filter(d => d !== 'N/A' && d !== '')
+                        .sort((a, b) => String(a).localeCompare(String(b)));
 
-        function togglePartialLeaveOptions() {
-            const type = document.getElementById('holiday-type-select').value; const panel = document.getElementById('partial-leave-options');
-            if (type === 'PARTIAL_LEAVE') { panel.classList.remove('hidden'); panel.classList.add('flex'); } else { panel.classList.add('hidden'); panel.classList.remove('flex'); }
-        }
-        function toggleHoursInput() {
-            const pt = document.getElementById('partial-leave-type').value; const input = document.getElementById('partial-leave-hours');
-            if (pt === 'ระบุชั่วโมง') input.classList.remove('hidden'); else input.classList.add('hidden');
-        }
-
-        function applyHoliday() {
-            const sId = document.getElementById('holiday-staff-select').value; const startStr = document.getElementById('holiday-date-select').value;
-            const endStr = document.getElementById('holiday-date-end').value; const type = document.getElementById('holiday-type-select').value;
-            if (!startStr) { alert("กรุณาระบุวันที่เริ่มต้น"); return; }
-            let startDate = new Date(startStr); let endDate = endStr ? new Date(endStr) : new Date(startStr);
-            if (endDate < startDate) { let temp = startDate; startDate = endDate; endDate = temp; }
-            let valToSave = '';
-            if (type === 'SHIFT-A') valToSave = 'A'; else if (type === 'SHIFT-B') valToSave = 'B'; else if (type === 'SHIFT-C') valToSave = 'C';
-            else if (type === 'WEEKLY') valToSave = 'หยุด'; else if (type === 'LEAVE') valToSave = 'ลา'; else if (type === 'SWAP') valToSave = 'สลับ';
-            else if (type === 'PARTIAL_LEAVE') {
-                const pt = document.getElementById('partial-leave-type').value;
-                valToSave = (pt === 'ระบุชั่วโมง') ? `ลา(${document.getElementById('partial-leave-hours').value || 0}ชม.)` : `ลา(${pt})`;
-            }
-            let loopDate = new Date(startDate.getTime());
-            while(loopDate <= endDate) {
-                const y = loopDate.getFullYear(), m = loopDate.getMonth(), d = loopDate.getDate();
-                if (sId === 'ALL') STAFF_MAP.forEach(s => masterData[`sch-${y}-${m}-${d}-${s.id}`] = valToSave); else masterData[`sch-${y}-${m}-${d}-${sId}`] = valToSave;
-                loopDate.setDate(loopDate.getDate() + 1); 
-            }
-            renderDateHeaders(); renderSummaryTable(); renderScheduleTable(); syncData(false);
-            showToast('อัปเดตตารางงานสำเร็จ (รอส่งขึ้น Cloud)');
-        }
-
-        function resetHolidayToCalendar() {
-            const sId = document.getElementById('holiday-staff-select').value; const startStr = document.getElementById('holiday-date-select').value;
-            const endStr = document.getElementById('holiday-date-end').value; if (!startStr) { alert("กรุณาระบุวันที่เริ่มต้น"); return; }
-            let startDate = new Date(startStr); let endDate = endStr ? new Date(endStr) : new Date(startStr);
-            if (endDate < startDate) { let temp = startDate; startDate = endDate; endDate = temp; }
-            let loopDate = new Date(startDate.getTime());
-            while(loopDate <= endDate) {
-                const y = loopDate.getFullYear(), m = loopDate.getMonth(), d = loopDate.getDate();
-                if (sId === 'ALL') STAFF_MAP.forEach(s => delete masterData[`sch-${y}-${m}-${d}-${s.id}`]); else delete masterData[`sch-${y}-${m}-${d}-${sId}`];
-                loopDate.setDate(loopDate.getDate() + 1);
-            }
-            renderDateHeaders(); renderSummaryTable(); renderScheduleTable(); syncData(false);
-            showToast('ล้างค่ากลับเป็นค่าเริ่มต้น (รอส่งขึ้น Cloud)', 'yellow');
-        }
-
-        function handlePasteInSummary(e, sId, pId, day) {
-            if (!isSupervisorMode) return;
-            e.preventDefault(); e.target.onblur = null; 
-            const pastedText = (e.clipboardData || window.clipboardData).getData('Text');
-            if (!pastedText) return;
-            const rows = pastedText.split(/\r\n|\n|\r/);
-            const startFlatRowIndex = (sId * PRODUCT_MAP.length) + pId;
-            rows.forEach((row, rowOffset) => {
-                if (row.trim() === "") return;
-                const cols = row.split('\t');
-                const targetFlatRowIndex = startFlatRowIndex + rowOffset;
-                if (targetFlatRowIndex < STAFF_MAP.length * PRODUCT_MAP.length) {
-                    const targetSId = Math.floor(targetFlatRowIndex / PRODUCT_MAP.length);
-                    const targetPId = targetFlatRowIndex % PRODUCT_MAP.length;
-                    cols.forEach((col, colOffset) => {
-                        const targetDay = day + colOffset;
-                        if (targetDay <= daysInMonth) {
-                            const value = col.trim().replace(/[,"]/g, '');
-                            const key = getKey(targetSId, targetPId, targetDay);
-                            const schVal = getScheduleVal(currentYear, currentMonth, targetDay, targetSId);
-                            if (getHolTypeFromSch(schVal) === 'WORK' || targetPId === PRODUCT_MAP.length - 1) {
-                                if (value === "") delete masterData[key]; else { const parsed = parseInt(value); if (!isNaN(parsed)) masterData[key] = parsed; }
-                                delete masterData[`pending-${key}`];
-                            }
+                    visibleColumns = [];
+                    tableHeaders.forEach((_, i) => {
+                        if (originalData.some(row => row[i] !== undefined && row[i] !== null && String(row[i]).trim() !== "")) {
+                            visibleColumns.push(i);
                         }
                     });
+
+                    currentFilteredData = [...originalData];
+                    document.getElementById('fileNameLabel').textContent = "ไฟล์: " + file.name;
+                    renderAll();
+                    document.getElementById('uploadView').classList.add('hidden');
+                    document.getElementById('dataView').classList.remove('hidden');
                 }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function filterData(queries) {
+            if (queries.length === 0) currentFilteredData = [...originalData];
+            else {
+                currentFilteredData = originalData.filter(row => {
+                    return queries.some(q => {
+                        const searchLower = q.toLowerCase();
+                        return row.some(cell => String(cell).toLowerCase().trim() === searchLower);
+                    });
+                });
+            }
+            renderAll();
+        }
+
+        function getNumericValue(val) {
+            if (val === undefined || val === null) return 0;
+            const cleanVal = String(val).replace(/,/g, '');
+            const num = parseFloat(cleanVal);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function renderAll() {
+            const queries = lastSearchQueries.length > 0 ? lastSearchQueries : ["ทั้งหมด"];
+            const multiStats = {}; 
+
+            queries.forEach(q => {
+                multiStats[q] = {};
+                const dataForQ = q === "ทั้งหมด" 
+                    ? originalData 
+                    : originalData.filter(row => row.some(cell => String(cell).toLowerCase().trim() === q.toLowerCase()));
+                
+                dataForQ.forEach(row => {
+                    const d = row[dateColumnIndex] || 'N/A';
+                    if (!multiStats[q][d]) multiStats[q][d] = { g1: 0, g2: 0, sum: 0 };
+                    for (let i = 2; i <= 8; i++) multiStats[q][d].g1 += getNumericValue(row[i]);
+                    for (let i = 22; i <= 25; i++) multiStats[q][d].g2 += getNumericValue(row[i]);
+                    for (let i = 2; i <= 25; i++) multiStats[q][d].sum += getNumericValue(row[i]);
+                });
             });
-            renderSummaryTable(); renderInputTable(); syncData(false); showToast('วางข้อมูลตารางสรุปสำเร็จ (รอส่งขึ้น Cloud)');
+
+            // ส่วนที่ 4
+            lastGrandMatrix = [];
+            let gHtml = '<table><thead><tr><th class="sticky-col">ชื่อ / วันที่</th>';
+            availableDatesInFile.forEach(d => gHtml += `<th class="text-center">${d}</th>`);
+            gHtml += '</tr></thead><tbody>';
+
+            for(let i = 0; i < 5; i++) {
+                const query = queries[i];
+                const rowLabel = query ? `คนที่ ${i+1}: ${query}` : `คนที่ ${i+1}: -`;
+                const rowClass = query ? `row-highlight-${i+1}` : '';
+                const rowData = [];
+                
+                availableDatesInFile.forEach((d, dIdx) => {
+                    let total = 0;
+                    if (query) {
+                        const g2Today = multiStats[query][d]?.g2 || 0;
+                        const nextD = availableDatesInFile[dIdx+1];
+                        const g1Next = nextD ? (multiStats[query][nextD]?.g1 || 0) : 0;
+                        total = Math.round(g2Today + g1Next);
+                    }
+                    rowData.push(total);
+                });
+                lastGrandMatrix.push(rowData);
+                gHtml += `<tr><td class="sticky-col ${rowClass}"><div class="row-label-content"><span>${rowLabel}</span> <button onclick="copyRow('night', ${i})" class="copy-btn-small">คัดลอก</button></div></td>`;
+                rowData.forEach(val => gHtml += `<td class="text-center font-bold ${val > 0 ? 'text-indigo-600' : 'text-slate-300'}">${val.toLocaleString()}</td>`);
+                gHtml += '</tr>';
+            }
+            gHtml += '</tbody></table>';
+            document.getElementById('grandSummaryTableArea').innerHTML = gHtml;
+
+            // ส่วนที่ 5
+            lastDayMatrix = [];
+            let dHtml = '<table><thead><tr><th class="sticky-col">ชื่อ / วันที่</th>';
+            availableDatesInFile.forEach(d => dHtml += `<th class="text-center">${d}</th>`);
+            dHtml += '</tr></thead><tbody>';
+
+            for(let i = 0; i < 5; i++) {
+                const query = queries[i];
+                const rowLabel = query ? `คนที่ ${i+1}: ${query}` : `คนที่ ${i+1}: -`;
+                const rowClass = query ? `row-highlight-${i+1}` : '';
+                const rowData = [];
+                availableDatesInFile.forEach(d => {
+                    let val = 0;
+                    if (query) val = Math.round(multiStats[query][d]?.sum || 0);
+                    rowData.push(val);
+                });
+                lastDayMatrix.push(rowData);
+                dHtml += `<tr><td class="sticky-col ${rowClass}"><div class="row-label-content"><span>${rowLabel}</span> <button onclick="copyRow('day', ${i})" class="copy-btn-small">คัดลอก</button></div></td>`;
+                rowData.forEach(val => dHtml += `<td class="text-center font-bold ${val > 0 ? 'text-amber-600' : 'text-slate-300'}">${val.toLocaleString()}</td>`);
+                dHtml += '</tr>';
+            }
+            dHtml += '</tbody></table>';
+            document.getElementById('daySummaryTableArea').innerHTML = dHtml;
+
+            renderMainTable();
         }
 
-        function showToast(msg, colorType = "green") {
-            const t = document.getElementById('toast'); const iconContainer = document.getElementById('toast-icon-container'); const icon = document.getElementById('toast-icon');
-            document.getElementById('toast-msg').textContent = msg;
-            
-            if(colorType === "yellow") { 
-                icon.className = "w-4 h-4 text-amber-400 animate-spin";
-                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>`; 
-            } else if (colorType === "red") { 
-                icon.className = "w-4 h-4 text-rose-500";
-                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>`; 
-            } else { 
-                icon.className = "w-4 h-4 text-emerald-400";
-                icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>`; 
-            }
-            
-            t.classList.remove('toast-hide'); t.classList.add('toast-show');
-            if (colorType !== "yellow") { setTimeout(() => { t.classList.remove('toast-show'); t.classList.add('toast-hide'); }, 3000); }
+        window.copyRow = function(type, rowIndex) {
+            const matrix = (type === 'night') ? lastGrandMatrix : lastDayMatrix;
+            const rowData = matrix[rowIndex];
+            if (!rowData) return;
+            const text = rowData.join('\t');
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            const toast = document.getElementById("toast");
+            toast.textContent = `คัดลอกข้อมูลคนที่ ${rowIndex + 1} เรียบร้อยแล้ว`;
+            toast.className = "show";
+            setTimeout(() => { toast.className = ""; }, 3000);
+        };
+
+        function renderMainTable() {
+            let html = '<table><thead><tr><th class="w-12 text-center">#</th>';
+            visibleColumns.forEach(i => {
+                const icon = sortConfig.key === i ? (sortConfig.direction === 'asc' ? ' ↓' : ' ↑') : ' ↕';
+                html += `<th onclick="handleSort(${i})" class="cursor-pointer whitespace-nowrap">${tableHeaders[i]}${icon}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            currentFilteredData.forEach((row, idx) => {
+                html += `<tr><td class="text-center text-slate-400">${idx + 1}</td>`;
+                visibleColumns.forEach(i => html += `<td>${row[i] || ''}</td>`);
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('mainTableArea').innerHTML = html;
+            document.getElementById('rowCountLabel').textContent = `พบ ${currentFilteredData.length} รายการ`;
         }
 
-        function toggleSupervisorMode() {
-            if (isSupervisorMode) {
-                isSupervisorMode = false; document.getElementById('sup-btn-text').textContent = 'แก้ไขสำหรับ Sup/Assist';
-                document.getElementById('sup-btn').classList.replace('from-rose-500', 'from-indigo-600');
-                document.getElementById('sup-btn').classList.replace('to-rose-600', 'to-blue-600');
-                document.getElementById('holiday-management-panel').classList.add('hidden'); document.getElementById('paste-info').classList.add('hidden');
-                renderScheduleTable(); renderSummaryTable();
-            } else showAuthModal();
-        }
-        function showAuthModal() { 
-            const modal = document.getElementById('auth-modal');
-            const content = document.getElementById('auth-modal-content');
-            modal.classList.replace('hidden', 'flex'); 
-            setTimeout(() => content.classList.replace('scale-95', 'scale-100'), 10);
-            document.getElementById('auth-password').value = ''; document.getElementById('auth-password').focus(); 
-        }
-        function closeAuthModal() { 
-            const modal = document.getElementById('auth-modal');
-            const content = document.getElementById('auth-modal-content');
-            content.classList.replace('scale-100', 'scale-95');
-            setTimeout(() => modal.classList.replace('flex', 'hidden'), 300);
-        }
-        
-        // --- อัปเดตฟังก์ชันตรวจสอบรหัสผ่าน (ป้องกันการถูกส่องจาก Source Code) ---
-        function verifyAuth() {
-            try {
-                const inputPwd = document.getElementById('auth-password').value;
-                
-                // แปลงรหัสที่กรอกเป็น Base64 แล้วสลับด้าน (Obfuscation)
-                // รหัสผ่าน "SAdee11436" เมื่อผ่านกระบวนการนี้ จะได้ค่าเป็น "==gNzQTMxVWZkF0U"
-                const encodedPwd = btoa(inputPwd).split('').reverse().join('');
-                
-                if (encodedPwd === '==gNzQTMxVWZkF0U') {
-                    isSupervisorMode = true; 
-                    closeAuthModal(); 
-                    document.getElementById('sup-btn-text').textContent = 'ออกจากโหมดแก้ไข';
-                    document.getElementById('sup-btn').classList.replace('from-indigo-600', 'from-rose-500');
-                    document.getElementById('sup-btn').classList.replace('to-blue-600', 'to-rose-600');
-                    document.getElementById('holiday-management-panel').classList.remove('hidden'); 
-                    document.getElementById('paste-info').classList.remove('hidden');
-                    renderScheduleTable(); 
-                    renderSummaryTable();
-                    return; // ผ่านแล้วจบฟังก์ชัน
-                }
-            } catch(e) {
-                // กรณีพิมพ์ภาษาไทยจนบักก็จะถือว่ารหัสผิดไปเลย
-            }
-            
-            // กรณีรหัสผิด
-            const errorText = document.getElementById('auth-error');
-            errorText.classList.remove('hidden');
-            errorText.classList.add('animate-bounce');
-            setTimeout(() => errorText.classList.remove('animate-bounce'), 1000);
-        }
-        document.getElementById('auth-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyAuth(); });
+        window.handleSort = function(columnIndex) {
+            let direction = (sortConfig.key === columnIndex && sortConfig.direction === 'asc') ? 'desc' : 'asc';
+            sortConfig = { key: columnIndex, direction };
+            currentFilteredData.sort((a, b) => {
+                let vA = a[columnIndex], vB = b[columnIndex];
+                const nA = parseFloat(String(vA).replace(/,/g, '')), nB = parseFloat(String(vB).replace(/,/g, ''));
+                if (!isNaN(nA) && !isNaN(nB)) return direction === 'asc' ? nA - nB : nB - nA;
+                return direction === 'asc' ? String(vA).localeCompare(String(vB)) : String(vB).localeCompare(String(vA));
+            });
+            renderAll();
+        };
+
+        window.resetApp = () => location.reload();
+        window.onload = initApp;
     </script>
 </body>
 </html>
