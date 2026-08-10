@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Premium Excel Analytics Tool - Multi-Search</title>
+    <title>Premium Excel Analytics Tool - Multi-Search & Cloud Settings</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
             --primary: #4f46e5;
@@ -139,17 +140,41 @@
             white-space: nowrap;
         }
         .copy-btn-small:hover { background: #e2e8f0; color: #1e293b; }
+
+        /* Modal Styles */
+        .modal-overlay {
+            background-color: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        
+        .tab-btn.active {
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="min-h-screen text-slate-800">
 
     <div id="toast">คัดลอกข้อมูลสำเร็จแล้ว</div>
 
-    <!-- View 1: Upload -->
-    <div id="uploadView" class="flex flex-col items-center justify-center min-h-screen p-6 animate-slide-in">
-        <div class="max-w-2xl w-full text-center">
+    <div id="loadingOverlay" class="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+        <p class="text-slate-500 font-medium animate-pulse" id="loadingText">กำลังเชื่อมต่อระบบ Cloud...</p>
+    </div>
+
+    <div id="uploadView" class="hidden flex-col items-center justify-center min-h-screen p-6 animate-slide-in">
+        <div class="max-w-2xl w-full text-center relative">
+            
+            <button onclick="openSettingsModal()" class="absolute right-0 top-0 mt-2 p-2 text-slate-500 hover:text-indigo-600 bg-white rounded-full shadow-sm hover:shadow transition-all group" title="ตั้งค่าระบบ">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 group-hover:rotate-45 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+
             <h1 class="text-4xl font-extrabold text-slate-900 mb-2">Excel Smart Analysis</h1>
-            <p class="text-slate-500 mb-10">แสดงผลเฉพาะวันที่ที่มีข้อมูลในไฟล์ (Exact Match)</p>
+            <p class="text-slate-500 mb-10">แสดงผลเฉพาะวันที่ที่มีข้อมูลในไฟล์ (Exact Match) พร้อมระบบคลาวด์</p>
             
             <div id="dropZone" class="drop-area rounded-3xl p-12 shadow-sm cursor-pointer border-slate-200">
                 <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-6 mx-auto">
@@ -164,12 +189,11 @@
         </div>
     </div>
 
-    <!-- View 2: Data Dashboard -->
     <div id="dataView" class="hidden flex flex-col min-h-screen">
         <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
             <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-6">
                 <div class="flex items-center gap-4 shrink-0">
-                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">EX</div>
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-sm">EX</div>
                     <div class="hidden sm:block">
                         <h2 id="fileNameLabel" class="font-bold text-slate-800 truncate max-w-[150px]">ไฟล์: -</h2>
                         <span id="rowCountLabel" class="text-xs text-slate-500 font-medium tracking-tight">พบ 0 รายการ</span>
@@ -207,7 +231,12 @@
                     </div>
                 </div>
 
-                <button onclick="resetApp()" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">เปลี่ยนไฟล์</button>
+                <div class="flex items-center gap-2">
+                    <button onclick="openSettingsModal()" class="p-2.5 text-slate-500 hover:text-indigo-600 bg-slate-100 rounded-xl hover:bg-indigo-50 transition-colors" title="ตั้งค่าระบบ">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </button>
+                    <button onclick="resetApp()" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors whitespace-nowrap">เปลี่ยนไฟล์</button>
+                </div>
             </div>
             <div id="searchTags" class="max-w-7xl mx-auto mt-2 flex flex-wrap gap-2 px-6"></div>
         </header>
@@ -248,7 +277,188 @@
         </main>
     </div>
 
+    <div id="settingsModal" class="fixed inset-0 z-[150] modal-overlay hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col transform scale-95 transition-transform duration-300" id="settingsModalContent">
+            
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    ตั้งค่าระบบ (Cloud Sync)
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+
+            <div class="flex border-b border-slate-200 px-6 pt-2">
+                <button onclick="switchTab('teams')" id="tabBtn-teams" class="tab-btn active px-4 py-2 text-slate-500 pb-3 transition-colors">จัดรายชื่อในทีม</button>
+                <button onclick="switchTab('mappings')" id="tabBtn-mappings" class="tab-btn px-4 py-2 text-slate-500 pb-3 transition-colors">จับคู่ชื่อในระบบ</button>
+            </div>
+
+            <div class="overflow-y-auto p-6 custom-scrollbar flex-grow bg-slate-50">
+                
+                <!-- Teams Settings Tab -->
+                <div id="tab-teams" class="space-y-4">
+                    <p class="text-sm text-slate-500 mb-4">กำหนดรายชื่อของแต่ละทีม โดยใช้เครื่องหมายคอมม่า (,) คั่นระหว่างชื่อ ลำดับที่กรอกจะส่งผลต่อการเรียงในตาราง</p>
+                    
+                    <div class="space-y-3" id="teamsConfigContainer">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Mappings Settings Tab -->
+                <div id="tab-mappings" class="hidden space-y-4">
+                    <p class="text-sm text-slate-500 mb-4">ระบบจะแปลง "ชื่อผู้ใช้ใน Excel (ต้นฉบับ)" ให้เป็น "ชื่อเล่น (แสดงผล)" อัตโนมัติตามตารางนี้</p>
+                    
+                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                        <div class="p-4 bg-slate-50 border-b border-slate-200 flex gap-3 items-center">
+                            <input type="text" id="newMapKey" placeholder="เช่น MLPR_Surachet.th" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <span class="text-slate-400">-></span>
+                            <input type="text" id="newMapVal" placeholder="เช่น เป้" class="w-1/3 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <button onclick="addMapping()" class="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg text-sm hover:bg-indigo-700">เพิ่ม</button>
+                        </div>
+                        <div class="max-h-[300px] overflow-y-auto custom-scrollbar">
+                            <table class="w-full text-left border-collapse" id="mappingTable">
+                                <!-- Populated by JS -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-end gap-3 rounded-b-2xl">
+                <button onclick="closeSettingsModal()" class="px-5 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">ยกเลิก</button>
+                <button onclick="saveSettingsToCloud()" class="px-5 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                    บันทึกการตั้งค่า
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration injected by environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-excel-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, currentUserId;
+
+        // --- Default Configuration State ---
+        window.appSettings = {
+            teams: {
+                "1": "ดีดี๊,หมวย,ปาล์ม,เป๊ปซี่",
+                "2": "เบ๊บ,เฟิร์ส,มันแกว,เดีย,ฟีม",
+                "3": "ปอลี่,ภีม,พี่มิ,เป๋าเป้",
+                "4": "ป็อป,ไอซ์,นิว,ปุ้ก,พี่มด",
+                "5": "นนท์,เบียร์,แนน,ซัน"
+            },
+            nameMap: {
+                "MLPR_Surachet.th": "เป้", "MLPR_Phogsakorn.wad": "ปอลี่", "MLPR_Siriwan.put": "เบียร์",
+                "TG_Anon.cha": "นนท์", "MLPR_Atcharaporn.ch": "พี่แนน", "MLPR_Chanokwan.kan": "เดีย",
+                "TG_Pakin.pl": "ซัน", "TG_Sitthinon.kae": "นิว", "TG_Wannarat.dou": "หมวย",
+                "MLPR_Phanupong.ko": "เป๊ปซี่", "MLPR_Thanawat.utt": "ปาล์ม", "MLPR_Harumi.ut": "พี่มิ",
+                "MLPR_Kanthika.nap": "ฟีม", "MLPR_Oracha.wi": "มันแกว", "MLPR_Pakkawat.boo": "ไอซ์",
+                "MLPR_Patiwet.nua": "เบ๊บ", "MLPR_Phetnarin.yae": "เป๋าเป้", "MLPR_Piyavan.see": "ปุ้ก",
+                "TG_Aekkarat.ama": "เฟิร์ส", "TG_Auttapinuya.sin": "ฟ้า", "TG_Maneerat.sae": "ป็อป",
+                "MLPR_Wisarut.moo": "ดีดี๊", "TG_Kanokrat.yue": "พี่มด", "TG_Kittapak.yoo": "ภีม"
+            }
+        };
+        
+        let loadedRawWorkbook = null; // Store raw excel data to re-render if settings change
+
+        // Initialize Firebase
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            if (initToken) {
+                signInWithCustomToken(auth, initToken).catch(err => {
+                    console.error("Custom token login failed, falling back to anonymous", err);
+                    signInAnonymously(auth);
+                });
+            } else {
+                signInAnonymously(auth);
+            }
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    await loadSettingsFromCloud();
+                }
+                // Hide loading overlay once auth/load is done
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('uploadView').classList.remove('hidden');
+                document.getElementById('uploadView').classList.add('flex');
+            });
+        } catch (error) {
+            console.error("Firebase init error:", error);
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('uploadView').classList.remove('hidden');
+            document.getElementById('uploadView').classList.add('flex');
+            showToast("ไม่สามารถเชื่อมต่อ Cloud ได้ จะทำงานในโหมดออฟไลน์");
+        }
+
+        // Load Settings
+        async function loadSettingsFromCloud() {
+            if (!currentUserId || !db) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'config', 'settings');
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if(data.teams) window.appSettings.teams = data.teams;
+                    if(data.nameMap) window.appSettings.nameMap = data.nameMap;
+                }
+            } catch (error) {
+                console.error("Error loading settings:", error);
+            }
+        }
+
+        // Save Settings (Exposed globally for UI binding)
+        window.saveSettingsToCloud = async function() {
+            // Read from inputs
+            for(let i=1; i<=5; i++) {
+                const val = document.getElementById(`teamInput_${i}`).value;
+                window.appSettings.teams[i] = val;
+            }
+
+            showToast("กำลังบันทึกการตั้งค่า...");
+            
+            if (currentUserId && db) {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'users', currentUserId, 'config', 'settings');
+                    await setDoc(docRef, window.appSettings);
+                } catch (error) {
+                    console.error("Error saving settings:", error);
+                    showToast("เกิดข้อผิดพลาดในการบันทึก Cloud");
+                }
+            }
+            
+            closeSettingsModal();
+            showToast("บันทึกการตั้งค่าสำเร็จแล้ว");
+
+            // If file is already loaded, re-process with new settings
+            if (window.loadedRawJson && window.loadedRawJson.length > 0) {
+                window.processRawJson(window.loadedRawJson);
+                // Retrigger current search/team selection
+                const teamSel = document.getElementById('teamSelector');
+                if(teamSel.value) teamSel.dispatchEvent(new Event('change'));
+                else document.getElementById('searchInput').dispatchEvent(new Event('input'));
+            }
+        };
+
+    </script>
+
     <script>
+        // --- Core Application Variables ---
         let originalData = [];
         let tableHeaders = [];
         let visibleColumns = [];
@@ -256,11 +466,57 @@
         let sortConfig = { key: null, direction: 'asc' };
         let dateColumnIndex = -1;
         let lastSearchQueries = [];
-        let availableDatesInFile = [];
+        let availableDatesInFile = []; // This will now store actual JS Date objects
         
         let lastGrandMatrix = []; 
         let lastDayMatrix = [];
 
+        // Global store for re-processing when settings change
+        window.loadedRawJson = null;
+
+        // --- Helper: Date Parsing (Fix for Goal 4) ---
+        // Converts various excel date formats to a consistent JS Date object
+        function parseExcelDate(val) {
+            if (!val) return null;
+            if (val instanceof Date) return val; // Already parsed by xlsx
+            
+            const s = String(val).trim();
+            // Match DD/MM/YYYY or DD-MM-YYYY
+            const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+            if (dmyMatch) {
+                // month is 0-indexed in JS
+                return new Date(parseInt(dmyMatch[3]), parseInt(dmyMatch[2]) - 1, parseInt(dmyMatch[1]));
+            }
+            // Match YYYY-MM-DD
+            const ymdMatch = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+            if (ymdMatch) {
+                return new Date(parseInt(ymdMatch[1]), parseInt(ymdMatch[2]) - 1, parseInt(ymdMatch[3]));
+            }
+            
+            // Standard fallback
+            const d = new Date(s);
+            if (!isNaN(d.getTime())) return d;
+            
+            return null; // Invalid date
+        }
+
+        // Helper to format Date back to display string (DD/MM/YYYY) for UI
+        function formatDateForDisplay(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return 'N/A';
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const y = dateObj.getFullYear();
+            return `${d}/${m}/${y}`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.textContent = msg;
+            toast.className = "show";
+            setTimeout(() => { toast.className = ""; }, 3000);
+        }
+
+        // --- Init App ---
         function initApp() {
             const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
@@ -273,22 +529,18 @@
             fileInput.onchange = (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); };
 
             searchInput.oninput = () => {
-                if (teamSelector.value !== "") teamSelector.value = "";
+                if (teamSelector.value !== "") teamSelector.value = ""; // Reset team dropdown if typing manually
                 const queries = searchInput.value.split(/[,,| ]/).map(s => s.trim()).filter(s => s !== "").slice(0, 5);
                 performSearch(queries);
             };
 
             teamSelector.onchange = () => {
                 const team = teamSelector.value;
-                let names = "";
-                switch(team) {
-                    case "1": names = "ดีดี๊,หมวย,ปาล์ม,เป๊ปซี่"; break;
-                    case "2": names = "เบ๊บ,เฟิร์ส,มันแกว,เดีย,ฟีม"; break;
-                    case "3": names = "ปอลี่,ภีม,พี่มิ,เป๋าเป้"; break;
-                    case "4": names = "ป็อป,ไอซ์,นิว,ปุ้ก,พี่มด"; break;
-                    case "5": names = "นนท์,เบียร์,แนน,ซัน"; break;
-                    default: names = "";
-                }
+                if (!team) return;
+                
+                // Use dynamic configuration
+                const names = window.appSettings.teams[team] || "";
+                
                 searchInput.value = names;
                 const queries = names.split(',').map(s => s.trim()).filter(s => s !== "");
                 performSearch(queries);
@@ -319,68 +571,87 @@
             };
         }
 
+        // --- File Handling & Processing ---
         function handleFile(file) {
+            document.getElementById('fileNameLabel').textContent = "ไฟล์: " + file.name;
             const reader = new FileReader();
             reader.onload = (e) => {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const json = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false });
-
+                
                 if (json.length > 0) {
-                    tableHeaders = json[0];
-                    let rawData = json.slice(1);
+                    window.loadedRawJson = json; // Keep original for re-processing on setting changes
+                    processRawJson(json);
                     
-                    const nameMap = {
-                        "MLPR_Surachet.th": "เป้", "MLPR_Phogsakorn.wad": "ปอลี่", "MLPR_Siriwan.put": "เบียร์",
-                        "TG_Anon.cha": "นนท์", "MLPR_Atcharaporn.ch": "พี่แนน", "MLPR_Chanokwan.kan": "เดีย",
-                        "TG_Pakin.pl": "ซัน", "TG_Sitthinon.kae": "นิว", "TG_Wannarat.dou": "หมวย",
-                        "MLPR_Phanupong.ko": "เป๊ปซี่", "MLPR_Thanawat.utt": "ปาล์ม", "MLPR_Harumi.ut": "พี่มิ",
-                        "MLPR_Kanthika.nap": "ฟีม", "MLPR_Oracha.wi": "มันแกว", "MLPR_Pakkawat.boo": "ไอซ์",
-                        "MLPR_Patiwet.nua": "เบ๊บ", "MLPR_Phetnarin.yae": "เป๋าเป้", "MLPR_Piyavan.see": "ปุ้ก",
-                        "TG_Aekkarat.ama": "เฟิร์ส", "TG_Auttapinuya.sin": "ฟ้า", "TG_Maneerat.sae": "ป็อป",
-                        "MLPR_Wisarut.moo": "ดีดี๊", "TG_Kanokrat.yue": "พี่มด", "TG_Kittapak.yoo": "ภีม"
-                    };
-
-                    originalData = rawData.map(row => {
-                        return row.map(cell => {
-                            if (typeof cell === 'string') {
-                                let updatedCell = cell;
-                                for (const [key, nickname] of Object.entries(nameMap)) {
-                                    const escapedKey = key.replace(/\./g, '\\.');
-                                    const regex = new RegExp(escapedKey, 'gi');
-                                    if (regex.test(updatedCell)) updatedCell = updatedCell.replace(regex, nickname);
-                                }
-                                return updatedCell;
-                            }
-                            return cell;
-                        });
-                    });
-
-                    dateColumnIndex = tableHeaders.findIndex(h => String(h).includes('วัน'));
-                    if (dateColumnIndex === -1) dateColumnIndex = 0;
-
-                    // ดึงเฉพาะวันที่ที่มีอยู่ในไฟล์จริงๆ
-                    availableDatesInFile = [...new Set(originalData.map(row => row[dateColumnIndex] || 'N/A'))]
-                        .filter(d => d !== 'N/A' && d !== '')
-                        .sort((a, b) => String(a).localeCompare(String(b)));
-
-                    visibleColumns = [];
-                    tableHeaders.forEach((_, i) => {
-                        if (originalData.some(row => row[i] !== undefined && row[i] !== null && String(row[i]).trim() !== "")) {
-                            visibleColumns.push(i);
-                        }
-                    });
-
-                    currentFilteredData = [...originalData];
-                    document.getElementById('fileNameLabel').textContent = "ไฟล์: " + file.name;
-                    renderAll();
                     document.getElementById('uploadView').classList.add('hidden');
+                    document.getElementById('uploadView').classList.remove('flex');
                     document.getElementById('dataView').classList.remove('hidden');
                 }
             };
             reader.readAsArrayBuffer(file);
         }
+
+        window.processRawJson = function(json) {
+            tableHeaders = json[0];
+            let rawData = json.slice(1);
+            
+            const dynamicNameMap = window.appSettings.nameMap || {};
+
+            originalData = rawData.map(row => {
+                return row.map(cell => {
+                    if (typeof cell === 'string') {
+                        let updatedCell = cell;
+                        // Apply dynamic mapping
+                        for (const [key, nickname] of Object.entries(dynamicNameMap)) {
+                            const escapedKey = key.replace(/\./g, '\\.');
+                            const regex = new RegExp(escapedKey, 'gi');
+                            if (regex.test(updatedCell)) updatedCell = updatedCell.replace(regex, nickname);
+                        }
+                        return updatedCell;
+                    }
+                    return cell;
+                });
+            });
+
+            dateColumnIndex = tableHeaders.findIndex(h => String(h).includes('วัน'));
+            if (dateColumnIndex === -1) dateColumnIndex = 0;
+
+            // Extract, Parse, and Sort Dates Chronologically (Fixes Goal 4 bug)
+            const uniqueDatesSet = new Set();
+            const dateObjectsMap = new Map(); // Keep reference to orig string if needed
+
+            originalData.forEach(row => {
+                const rawVal = row[dateColumnIndex];
+                if (rawVal && rawVal !== 'N/A' && String(rawVal).trim() !== '') {
+                    const parsedObj = parseExcelDate(rawVal);
+                    if (parsedObj) {
+                        const timeKey = parsedObj.getTime();
+                        if (!uniqueDatesSet.has(timeKey)) {
+                            uniqueDatesSet.add(timeKey);
+                            dateObjectsMap.set(timeKey, parsedObj);
+                        }
+                    }
+                }
+            });
+
+            // Sort chronologically
+            const sortedTimeKeys = Array.from(uniqueDatesSet).sort((a, b) => a - b);
+            
+            // availableDatesInFile will now hold actual Date objects in proper chronological order
+            availableDatesInFile = sortedTimeKeys.map(timeKey => dateObjectsMap.get(timeKey));
+
+            visibleColumns = [];
+            tableHeaders.forEach((_, i) => {
+                if (originalData.some(row => row[i] !== undefined && row[i] !== null && String(row[i]).trim() !== "")) {
+                    visibleColumns.push(i);
+                }
+            });
+
+            currentFilteredData = [...originalData];
+            renderAll();
+        };
 
         function filterData(queries) {
             if (queries.length === 0) currentFilteredData = [...originalData];
@@ -406,6 +677,7 @@
             const queries = lastSearchQueries.length > 0 ? lastSearchQueries : ["ทั้งหมด"];
             const multiStats = {}; 
 
+            // Calculate stats using timeKey string representation to avoid ref issues
             queries.forEach(q => {
                 multiStats[q] = {};
                 const dataForQ = q === "ทั้งหมด" 
@@ -413,18 +685,23 @@
                     : originalData.filter(row => row.some(cell => String(cell).toLowerCase().trim() === q.toLowerCase()));
                 
                 dataForQ.forEach(row => {
-                    const d = row[dateColumnIndex] || 'N/A';
-                    if (!multiStats[q][d]) multiStats[q][d] = { g1: 0, g2: 0, sum: 0 };
-                    for (let i = 2; i <= 8; i++) multiStats[q][d].g1 += getNumericValue(row[i]);
-                    for (let i = 22; i <= 25; i++) multiStats[q][d].g2 += getNumericValue(row[i]);
-                    for (let i = 2; i <= 25; i++) multiStats[q][d].sum += getNumericValue(row[i]);
+                    const parsedDate = parseExcelDate(row[dateColumnIndex]);
+                    if (parsedDate) {
+                        const dKey = parsedDate.getTime().toString();
+                        if (!multiStats[q][dKey]) multiStats[q][dKey] = { g1: 0, g2: 0, sum: 0 };
+                        for (let i = 2; i <= 8; i++) multiStats[q][dKey].g1 += getNumericValue(row[i]);
+                        for (let i = 22; i <= 25; i++) multiStats[q][dKey].g2 += getNumericValue(row[i]);
+                        for (let i = 2; i <= 25; i++) multiStats[q][dKey].sum += getNumericValue(row[i]);
+                    }
                 });
             });
 
-            // ส่วนที่ 4
+            // --- ส่วนที่ 4 : Grand Summary (กะกลางคืน) ---
             lastGrandMatrix = [];
             let gHtml = '<table><thead><tr><th class="sticky-col">ชื่อ / วันที่</th>';
-            availableDatesInFile.forEach(d => gHtml += `<th class="text-center">${d}</th>`);
+            availableDatesInFile.forEach(dObj => {
+                gHtml += `<th class="text-center">${formatDateForDisplay(dObj)}</th>`;
+            });
             gHtml += '</tr></thead><tbody>';
 
             for(let i = 0; i < 5; i++) {
@@ -433,12 +710,26 @@
                 const rowClass = query ? `row-highlight-${i+1}` : '';
                 const rowData = [];
                 
-                availableDatesInFile.forEach((d, dIdx) => {
+                availableDatesInFile.forEach((dObj) => {
                     let total = 0;
                     if (query) {
-                        const g2Today = multiStats[query][d]?.g2 || 0;
-                        const nextD = availableDatesInFile[dIdx+1];
-                        const g1Next = nextD ? (multiStats[query][nextD]?.g1 || 0) : 0;
+                        const dKey = dObj.getTime().toString();
+                        const g2Today = multiStats[query][dKey]?.g2 || 0;
+                        
+                        // ลอจิกแก้ปัญหาข้ามเดือน (Goal 4): หาวันพรุ่งนี้แบบเป๊ะๆ 
+                        const nextDayTime = dObj.getTime() + (24 * 60 * 60 * 1000);
+                        
+                        // ค้นหาในอาร์เรย์ว่ามีวันที่ตรงกับพรุ่งนี้หรือไม่ (เผื่อ tolerance เรื่อง timezone เล็กน้อย)
+                        const exactNextDayObj = availableDatesInFile.find(tObj => {
+                            return Math.abs(tObj.getTime() - nextDayTime) < (12 * 60 * 60 * 1000);
+                        });
+
+                        let g1Next = 0;
+                        if (exactNextDayObj) {
+                            const nextKey = exactNextDayObj.getTime().toString();
+                            g1Next = multiStats[query][nextKey]?.g1 || 0;
+                        }
+                        
                         total = Math.round(g2Today + g1Next);
                     }
                     rowData.push(total);
@@ -451,10 +742,10 @@
             gHtml += '</tbody></table>';
             document.getElementById('grandSummaryTableArea').innerHTML = gHtml;
 
-            // ส่วนที่ 5
+            // --- ส่วนที่ 5 : Day Summary (กะกลางวัน) ---
             lastDayMatrix = [];
             let dHtml = '<table><thead><tr><th class="sticky-col">ชื่อ / วันที่</th>';
-            availableDatesInFile.forEach(d => dHtml += `<th class="text-center">${d}</th>`);
+            availableDatesInFile.forEach(dObj => dHtml += `<th class="text-center">${formatDateForDisplay(dObj)}</th>`);
             dHtml += '</tr></thead><tbody>';
 
             for(let i = 0; i < 5; i++) {
@@ -462,9 +753,12 @@
                 const rowLabel = query ? `คนที่ ${i+1}: ${query}` : `คนที่ ${i+1}: -`;
                 const rowClass = query ? `row-highlight-${i+1}` : '';
                 const rowData = [];
-                availableDatesInFile.forEach(d => {
+                availableDatesInFile.forEach(dObj => {
                     let val = 0;
-                    if (query) val = Math.round(multiStats[query][d]?.sum || 0);
+                    if (query) {
+                        const dKey = dObj.getTime().toString();
+                        val = Math.round(multiStats[query][dKey]?.sum || 0);
+                    }
                     rowData.push(val);
                 });
                 lastDayMatrix.push(rowData);
@@ -489,10 +783,7 @@
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            const toast = document.getElementById("toast");
-            toast.textContent = `คัดลอกข้อมูลคนที่ ${rowIndex + 1} เรียบร้อยแล้ว`;
-            toast.className = "show";
-            setTimeout(() => { toast.className = ""; }, 3000);
+            showToast(`คัดลอกข้อมูลคนที่ ${rowIndex + 1} เรียบร้อยแล้ว`);
         };
 
         function renderMainTable() {
@@ -504,7 +795,15 @@
             html += '</tr></thead><tbody>';
             currentFilteredData.forEach((row, idx) => {
                 html += `<tr><td class="text-center text-slate-400">${idx + 1}</td>`;
-                visibleColumns.forEach(i => html += `<td>${row[i] || ''}</td>`);
+                visibleColumns.forEach(i => {
+                    // Try to format date properly for display if it's the date column
+                    let displayVal = row[i];
+                    if (i === dateColumnIndex) {
+                        const d = parseExcelDate(row[i]);
+                        if (d) displayVal = formatDateForDisplay(d);
+                    }
+                    html += `<td>${displayVal || ''}</td>`;
+                });
                 html += '</tr>';
             });
             html += '</tbody></table>';
@@ -525,6 +824,109 @@
         };
 
         window.resetApp = () => location.reload();
+
+
+        window.openSettingsModal = function() {
+            const modal = document.getElementById('settingsModal');
+            const content = document.getElementById('settingsModalContent');
+            
+            // Build UI from current memory state
+            buildTeamsUI();
+            buildMappingsUI();
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        };
+
+        window.closeSettingsModal = function() {
+            const modal = document.getElementById('settingsModal');
+            const content = document.getElementById('settingsModalContent');
+            
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        };
+
+        window.switchTab = function(tabName) {
+            document.getElementById('tabBtn-teams').classList.remove('active');
+            document.getElementById('tabBtn-mappings').classList.remove('active');
+            document.getElementById(`tabBtn-${tabName}`).classList.add('active');
+
+            document.getElementById('tab-teams').classList.add('hidden');
+            document.getElementById('tab-mappings').classList.add('hidden');
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+        };
+
+        function buildTeamsUI() {
+            const container = document.getElementById('teamsConfigContainer');
+            let html = '';
+            for(let i = 1; i <= 5; i++) {
+                html += `
+                    <div class="flex flex-col gap-1">
+                        <label class="text-sm font-bold text-slate-700">ทีม ${i}</label>
+                        <input type="text" id="teamInput_${i}" value="${window.appSettings.teams[i] || ''}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow">
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+        }
+
+        function buildMappingsUI() {
+            const table = document.getElementById('mappingTable');
+            let html = `
+                <thead class="bg-slate-100 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase">ชื่อในระบบ (Excel)</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase w-1/3">แสดงผลเป็น</th>
+                        <th class="px-4 py-2 text-xs font-bold text-slate-600 uppercase w-16 text-center">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+            `;
+            
+            for(const [sysName, dispName] of Object.entries(window.appSettings.nameMap)) {
+                // Escape quotes for html attributes
+                const safeSys = sysName.replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+                html += `
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-2 text-sm text-slate-700 font-medium">${sysName}</td>
+                        <td class="px-4 py-2 text-sm text-indigo-600 font-bold">${dispName}</td>
+                        <td class="px-4 py-2 text-center">
+                            <button onclick="removeMapping('${safeSys}')" class="text-rose-400 hover:text-rose-600 p-1" title="ลบ">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+
+        window.addMapping = function() {
+            const key = document.getElementById('newMapKey').value.trim();
+            const val = document.getElementById('newMapVal').value.trim();
+            if (key && val) {
+                window.appSettings.nameMap[key] = val;
+                document.getElementById('newMapKey').value = '';
+                document.getElementById('newMapVal').value = '';
+                buildMappingsUI();
+            }
+        };
+
+        window.removeMapping = function(key) {
+            delete window.appSettings.nameMap[key];
+            buildMappingsUI();
+        };
+
         window.onload = initApp;
     </script>
 </body>
