@@ -343,9 +343,17 @@
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase Configuration injected by environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-excel-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const appId = 'mflow-hub-app'; 
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4Hj0zbipYdBiHQQYM6Lft_jMUGjfgDBg",
+            authDomain: "mflow-hub.firebaseapp.com",
+            databaseURL: "https://mflow-hub-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "mflow-hub",
+            storageBucket: "mflow-hub.firebasestorage.app",
+            messagingSenderId: "509848719078",
+            appId: "1:509848719078:web:9a5aeefe83454fb282f527"
+        };
+        const initToken = null;
 
         let app, db, auth, currentUserId;
 
